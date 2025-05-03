@@ -69,9 +69,6 @@ public class SymmetricAlgorithm {
 
     rdMax = BigInteger.valueOf(2).pow(8 * blockSize);
 
-//    if (delta <= 0 || BigInteger.valueOf(delta).subtract(rdMax).intValue() >= 0) {
-//      throw new IllegalArgumentException("Invalid delta: " + delta);
-//    }
     this.RD = delta;
 
     packing = new Packing(blockSize, packingMode);
