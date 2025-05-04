@@ -1,7 +1,7 @@
 package testsCW;
 
-import org.crypto.SymmetricEncryption;
-import org.crypto.rc5.RC5;
+import org.client.crypto.SymmetricEncryption;
+import org.client.crypto.rc5.RC5;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

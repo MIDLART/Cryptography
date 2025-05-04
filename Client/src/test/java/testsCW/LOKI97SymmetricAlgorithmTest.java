@@ -1,7 +1,7 @@
 package testsCW;
 
-import org.crypto.SymmetricAlgorithm;
-import org.crypto.loki97.LOKI97;
+import org.client.crypto.SymmetricAlgorithm;
+import org.client.crypto.loki97.LOKI97;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -15,10 +15,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-
-import static org.crypto.enums.EncryptionMode.*;
-import static org.crypto.enums.PackingMode.*;
-import static org.crypto.loki97.boxes.Sboxes.*;
 
 public class LOKI97SymmetricAlgorithmTest {
 

@@ -1,11 +1,11 @@
 package testsDes;
 
-import org.crypto.IFeistelFunction;
-import org.crypto.IGenKey;
-import org.crypto.SymmetricEncryption;
-import org.crypto.des.DEAL;
-import org.crypto.des.impl.DEALFeistelFunction;
-import org.crypto.des.impl.DEALGenKey;
+import org.client.crypto.IFeistelFunction;
+import org.client.crypto.IGenKey;
+import org.client.crypto.SymmetricEncryption;
+import org.client.crypto.des.DEAL;
+import org.client.crypto.des.impl.DEALFeistelFunction;
+import org.client.crypto.des.impl.DEALGenKey;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

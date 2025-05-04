@@ -1,7 +1,7 @@
 package testsCW;
 
-import org.crypto.SymmetricAlgorithm;
-import org.crypto.rc5.RC5;
+import org.client.crypto.SymmetricAlgorithm;
+import org.client.crypto.rc5.RC5;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -15,9 +15,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-
-import static org.crypto.enums.EncryptionMode.*;
-import static org.crypto.enums.PackingMode.*;
 
 public class RC5SymmetricAlgorithmTest {
 

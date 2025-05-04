@@ -1,15 +1,13 @@
 package testsCW;
 
-import org.crypto.SymmetricEncryption;
-import org.crypto.loki97.LOKI97;
-import org.crypto.loki97.impl.LOKI97FeistelFunction;
-import org.crypto.loki97.impl.LOKI97GenKey;
+import org.client.crypto.SymmetricEncryption;
+import org.client.crypto.loki97.LOKI97;
+import org.client.crypto.loki97.impl.LOKI97FeistelFunction;
+import org.client.crypto.loki97.impl.LOKI97GenKey;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.List;
-
-import static org.crypto.loki97.boxes.Sboxes.*;
 
 public class LOKI97Test {
 

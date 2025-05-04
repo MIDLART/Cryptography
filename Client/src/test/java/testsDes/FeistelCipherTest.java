@@ -1,14 +1,12 @@
 package testsDes;
 
-import org.crypto.IFeistelFunction;
-import org.crypto.des.FeistelCipher;
+import org.client.crypto.IFeistelFunction;
+import org.client.crypto.des.FeistelCipher;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.List;
 import java.util.stream.IntStream;
-
-import static org.crypto.enums.EncryptOrDecrypt.*;
 
 public class FeistelCipherTest {
 

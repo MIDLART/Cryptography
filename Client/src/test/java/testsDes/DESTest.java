@@ -1,11 +1,11 @@
 package testsDes;
 
-import org.crypto.IFeistelFunction;
-import org.crypto.IGenKey;
-import org.crypto.SymmetricEncryption;
-import org.crypto.des.DES;
-import org.crypto.des.impl.DESFeistelFunction;
-import org.crypto.des.impl.DESGenKey;
+import org.client.crypto.IFeistelFunction;
+import org.client.crypto.IGenKey;
+import org.client.crypto.SymmetricEncryption;
+import org.client.crypto.des.DES;
+import org.client.crypto.des.impl.DESFeistelFunction;
+import org.client.crypto.des.impl.DESGenKey;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
