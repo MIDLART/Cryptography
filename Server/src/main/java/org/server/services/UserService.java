@@ -1,22 +1,26 @@
-package org.crypto.services;
+package org.server.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.server.models.User;
 import org.server.repositories.UserRepository;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class UserService {
+public class UserService implements UserDetailsService {
   private final UserRepository userRepository;
-  private final PasswordEncoder passwordEncoder;
+  private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(8);
 
-  public void meow() {
-    log.info("meow");
+  @Override
+  public UserDetails loadUserByUsername(String name) throws UsernameNotFoundException {
+    return userRepository.findByName(name);
   }
 
   public boolean createUser(User user) {

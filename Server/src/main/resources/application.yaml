@@ -11,7 +11,6 @@
 #    spring.jpa.properties.hibernate.connection.provider_disables_autocommit=true
 
 
-
 spring:
   output:
     ansi:
@@ -22,3 +21,17 @@ spring:
     url: jdbc:postgresql://localhost:5432/postgres
     username: user
     password: password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+jwt:
+  secret: bWVvd1NlY3JldEJhc2U2NG1lb3dTZWNyZXRCYXNlNjQ=
+  expiration: 86400
+
+logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG

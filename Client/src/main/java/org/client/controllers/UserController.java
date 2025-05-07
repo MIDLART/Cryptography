@@ -1,16 +1,18 @@
 package org.client.controllers;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.stage.Stage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Controller;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -20,15 +22,11 @@ import java.net.http.HttpResponse;
 @RequiredArgsConstructor
 public class UserController {
 
-//  @FXML
-//  private TextField usernameField;
-//  @FXML
-//  private PasswordField passwordField;
-//  @FXML
-//  private PasswordField confirmPasswordField;
-
   @FXML
   private Button button;
+
+  @FXML
+  private Hyperlink registrationLink;
 
   @FXML
   private void meow() throws IOException, InterruptedException {
@@ -37,6 +35,7 @@ public class UserController {
 
     HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create("http://localhost:8080/meow"))
+//            .header("Authorization", "Bearer " + AppContext.getAuthToken())
             .GET()
             .build();
 
@@ -45,17 +44,24 @@ public class UserController {
     button.setText(response.body());
   }
 
-//  private void clearFields() {
-//    usernameField.clear();
-//    passwordField.clear();
-//    confirmPasswordField.clear();
-//  }
-//
-//  private void showAlert(Alert.AlertType type, String title, String message) {
-//    Alert alert = new Alert(type);
-//    alert.setTitle(title);
-//    alert.setHeaderText(null);
-//    alert.setContentText(message);
-//    alert.showAndWait();
-//  }
+  @FXML
+  private void goToRegistration() {
+    try {
+      URL url = getClass().getResource("/org/client/fxml/auth.fxml");
+      if (url == null) {
+        throw new IOException("FXML file not found");
+      }
+
+      FXMLLoader loader = new FXMLLoader(url);
+      Parent root = loader.load();
+
+      Stage stage = (Stage) registrationLink.getScene().getWindow();
+
+      stage.setScene(new Scene(root));
+      stage.setTitle("Регистрация");
+    } catch (IOException e) {
+      log.error("Ошибка при загрузке формы регистрации", e);
+//      welcomeText.setText("Ошибка при загрузке формы регистрации");
+    }
+  }
 }
