@@ -10,6 +10,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+//TODO
+
 @Log4j2
 public class AuthenticatedRequest {
   @Setter

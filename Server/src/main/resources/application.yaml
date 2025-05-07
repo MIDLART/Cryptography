@@ -10,7 +10,6 @@
 #    spring.datasource.hikari.auto-commit=false
 #    spring.jpa.properties.hibernate.connection.provider_disables_autocommit=true
 
-
 spring:
   output:
     ansi:
@@ -25,6 +24,11 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
 
 jwt:
   secret: bWVvd1NlY3JldEJhc2U2NG1lb3dTZWNyZXRCYXNlNjQ=

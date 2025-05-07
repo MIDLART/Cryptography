@@ -16,14 +16,14 @@
 
     <Button fx:id="button" text="Hello!" onAction="#meow"/>
 
-<!--    <HBox alignment="CENTER" spacing="5">-->
-<!--        <TextField fx:id="messageField" promptText="Введите сообщение"/>-->
-<!--        <Button text="Отправить" onAction="#sendMessage"/>-->
-<!--    </HBox>-->
+    <HBox alignment="CENTER" spacing="5">
+        <TextField fx:id="messageField" promptText="Введите сообщение"/>
+        <Button text="Отправить" onAction="#sendMessage"/>
+    </HBox>
 
     <HBox alignment="CENTER" spacing="5">
         <Label text="Нет аккаунта?"/>
-        <Hyperlink fx:id="registrationLink" text="Зарегистрироваться" onAction="#goToRegistration"/>
+        <Hyperlink fx:id="authLink" text="Зарегистрироваться" onAction="#goToAuth"/>
     </HBox>
 
 </VBox>

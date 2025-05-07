@@ -19,6 +19,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+import static org.client.services.CommonService.*;
+
 @Log4j2
 @Controller
 @RequiredArgsConstructor
@@ -31,7 +33,13 @@ public class UserController {
   private Button button;
 
   @FXML
-  private Hyperlink registrationLink;
+  private Hyperlink authLink;
+
+  @FXML
+  private TextField messageField;
+
+  @FXML
+  private Label messageLabel;
 
   @FXML
   private void meow() throws IOException, InterruptedException {
@@ -50,7 +58,36 @@ public class UserController {
   }
 
   @FXML
-  private void goToRegistration() {
+  private void sendMessage() {
+    String message = messageField.getText();
+    if (message == null || message.trim().isEmpty()) {
+      return;
+    }
+
+    if (authToken == null || authToken.isEmpty()) {
+      log.error("Токен не установлен!");
+      return;
+    }
+
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:8080/send-message"))
+            .header("Authorization", "Bearer " + authToken)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{\"message\":\"" + message + "\"}"))
+            .build();
+
+    try {
+      HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (IOException | InterruptedException e) {
+      log.error("Registration error", e);
+      showError(messageLabel, "Ошибка соединения с сервером: " + e.getMessage());
+    }
+
+    messageField.clear();
+  }
+
+  @FXML
+  private void goToAuth() {
     try {
       URL url = getClass().getResource("/org/client/fxml/auth.fxml");
       if (url == null) {
@@ -60,7 +97,7 @@ public class UserController {
       FXMLLoader loader = new FXMLLoader(url);
       Parent root = loader.load();
 
-      Stage stage = (Stage) registrationLink.getScene().getWindow();
+      Stage stage = (Stage) authLink.getScene().getWindow();
 
       stage.setScene(new Scene(root));
       stage.setTitle("Регистрация");

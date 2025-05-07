@@ -24,6 +24,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+import static org.client.services.CommonService.*;
+
 @Log4j2
 @Controller
 @RequiredArgsConstructor
@@ -44,7 +46,7 @@ public class AuthController {
 
   @FXML
   private void registration() throws JsonProcessingException {
-    clearLabel();
+    clearLabel(messageLabel);
 
     String username = usernameField.getText();
     String password = passwordField.getText();
@@ -68,25 +70,25 @@ public class AuthController {
               .send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
-        showSuccess("Регистрация успешна!");
+        showSuccess(messageLabel, "Регистрация успешна!");
       } else {
-        showError("Ошибка: " + response.body());
+        showError(messageLabel, "Ошибка: " + response.body());
       }
     } catch (IOException | InterruptedException e) {
       log.error("Registration error", e);
-      showError("Ошибка соединения с сервером: " + e.getMessage());
+      showError(messageLabel, "Ошибка соединения с сервером: " + e.getMessage());
     }
   }
 
   @FXML
   private void login() throws JsonProcessingException {
-    clearLabel();
+    clearLabel(messageLabel);
 
     String username = usernameField.getText();
     String password = passwordField.getText();
 
     if (username.isEmpty() || password.isEmpty()) {
-      showError("Все поля обязательны для заполнения!");
+      showError(messageLabel, "Все поля обязательны для заполнения!");
       return;
     }
 
@@ -108,22 +110,22 @@ public class AuthController {
         loginResponse = new ObjectMapper().readValue(response.body(), LoginResponse.class);
       } catch (JsonProcessingException e) {
         log.error("Parse error {}", response.body(), e);
-        showError("Ошибка парсинга: " + e.getMessage());
+        showError(messageLabel, "Ошибка парсинга: " + e.getMessage());
 
         return;
       }
 
       if (response.statusCode() == 200) {
         authToken = loginResponse.getToken();
-        showSuccess(loginResponse.getMessage());
+        showSuccess(messageLabel, loginResponse.getMessage());
 
         loadMainView();
       } else {
-        showError(loginResponse.getMessage());
+        showError(messageLabel, loginResponse.getMessage());
       }
     } catch (IOException | InterruptedException e) {
       log.error("Login error", e);
-      showError("Ошибка соединения с сервером: " + e.getMessage());
+      showError(messageLabel, "Ошибка соединения с сервером: " + e.getMessage());
     }
   }
 
@@ -145,7 +147,7 @@ public class AuthController {
 
     } catch (IOException e) {
       log.error("Failed to load main view", e);
-      showError("Ошибка загрузки главного экрана");
+      showError(messageLabel, "Ошибка загрузки главного экрана");
     }
   }
 
@@ -161,28 +163,14 @@ public class AuthController {
               .send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
-        showSuccess("Авторизованный запрос успешен: " + response.body());
+        showSuccess(messageLabel, "Авторизованный запрос успешен: " + response.body());
       } else {
-        showError("Ошибка авторизованного запроса: " + response.body());
+        showError(messageLabel, "Ошибка авторизованного запроса: " + response.body());
       }
     } catch (IOException | InterruptedException e) {
       log.error("Authenticated request error", e);
-      showError("Ошибка выполнения запроса: " + e.getMessage());
+      showError(messageLabel, "Ошибка выполнения запроса: " + e.getMessage());
     }
-  }
-
-  private void showError(String message) {
-    messageLabel.setText(message);
-    messageLabel.setStyle("-fx-text-fill: red;");
-  }
-
-  private void showSuccess(String message) {
-    messageLabel.setText(message);
-    messageLabel.setStyle("-fx-text-fill: green;");
-  }
-
-  private void clearLabel() {
-    messageLabel.setText("");
   }
 
   @Data
