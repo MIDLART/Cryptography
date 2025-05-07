@@ -9,6 +9,9 @@ import org.testng.annotations.Test;
 
 import java.util.List;
 
+import static org.client.crypto.loki97.boxes.Sboxes.initS1;
+import static org.client.crypto.loki97.boxes.Sboxes.initS2;
+
 public class LOKI97Test {
 
   @Test

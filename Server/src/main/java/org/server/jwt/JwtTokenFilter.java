@@ -64,7 +64,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     // Не фильтруем публичные endpoints
-    return request.getServletPath().startsWith("/auth")
+    return request.getServletPath().startsWith("/login")
             || request.getServletPath().startsWith("/registration");
   }
 }

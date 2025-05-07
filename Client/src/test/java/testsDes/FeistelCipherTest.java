@@ -8,6 +8,8 @@ import org.testng.annotations.Test;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static org.client.crypto.enums.EncryptOrDecrypt.*;
+
 public class FeistelCipherTest {
 
   IFeistelFunction feistelFunction = (data, key) -> {

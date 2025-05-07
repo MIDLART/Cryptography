@@ -16,6 +16,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
+import static org.client.crypto.enums.EncryptionMode.*;
+import static org.client.crypto.enums.PackingMode.*;
+
 public class RC5SymmetricAlgorithmTest {
 
   String testDirectory = "src/test/resources/CWTestsRC5";

@@ -40,7 +40,7 @@ public class UserController {
 
     HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create("http://localhost:8080/meow"))
-//            .header("Authorization", "Bearer " + AppContext.getAuthToken())
+            .header("Authorization", "Bearer " + authToken)
             .GET()
             .build();
 
@@ -66,7 +66,6 @@ public class UserController {
       stage.setTitle("Регистрация");
     } catch (IOException e) {
       log.error("Ошибка при загрузке формы регистрации", e);
-//      welcomeText.setText("Ошибка при загрузке формы регистрации");
     }
   }
 }

@@ -16,6 +16,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
+import static org.client.crypto.enums.EncryptionMode.*;
+import static org.client.crypto.enums.PackingMode.*;
+import static org.client.crypto.loki97.boxes.Sboxes.initS1;
+import static org.client.crypto.loki97.boxes.Sboxes.initS2;
+
 public class LOKI97SymmetricAlgorithmTest {
 
   String testDirectory = "src/test/resources/CWTestsLOKI97";

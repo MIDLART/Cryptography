@@ -36,6 +36,8 @@ public class AuthController {
   @FXML
   private Button registerButton;
   @FXML
+  public Button loginButton;
+  @FXML
   private Label messageLabel;
 
   private String authToken;

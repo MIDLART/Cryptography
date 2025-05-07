@@ -16,6 +16,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
+import static org.client.crypto.enums.EncryptionMode.*;
+import static org.client.crypto.enums.PackingMode.*;
+
 public class DEALContextTest {
 
   String testDirectory = "src/test/resources/DEALContextTest";

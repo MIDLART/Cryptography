@@ -16,6 +16,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
+import static org.client.crypto.enums.EncryptionMode.*;
+import static org.client.crypto.enums.PackingMode.*;
+
 public class DESContextTest {
 
   String testDirectory = "src/test/resources/DESContextTest";
