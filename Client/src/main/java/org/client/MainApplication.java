@@ -27,7 +27,7 @@ public class MainApplication extends Application {
 //    primaryStage.setTitle("Crypto Application");
 //    primaryStage.setScene(new Scene(root, 800, 600));
 //    primaryStage.show();
-    FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("hello-view.fxml"));
+    FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("fxml/main.fxml"));
     Scene scene = new Scene(fxmlLoader.load(), 320, 240);
     primaryStage.setTitle("Hello!");
     primaryStage.setScene(scene);

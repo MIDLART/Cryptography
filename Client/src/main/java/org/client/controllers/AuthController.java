@@ -3,10 +3,14 @@ package org.client.controllers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.stage.Stage;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -110,14 +114,36 @@ public class AuthController {
       if (response.statusCode() == 200) {
         authToken = loginResponse.getToken();
         showSuccess(loginResponse.getMessage());
-        //TODO главный экран
-//        testAuthenticatedRequest();
+
+        loadMainView();
       } else {
         showError(loginResponse.getMessage());
       }
     } catch (IOException | InterruptedException e) {
       log.error("Login error", e);
       showError("Ошибка соединения с сервером: " + e.getMessage());
+    }
+  }
+
+  private void loadMainView() {
+    try {
+      FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/client/fxml/main.fxml"));
+      Parent root = loader.load();
+
+      Scene currentScene = usernameField.getScene();
+      Stage stage = (Stage) currentScene.getWindow();
+
+      Scene mainScene = new Scene(root);
+      stage.setScene(mainScene);
+      stage.setTitle("Главный экран");
+      stage.show();
+
+      UserController mainController = loader.getController();
+      mainController.setAuthToken(authToken);
+
+    } catch (IOException e) {
+      log.error("Failed to load main view", e);
+      showError("Ошибка загрузки главного экрана");
     }
   }
 

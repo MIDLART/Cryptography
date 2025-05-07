@@ -6,7 +6,9 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Controller;
 
@@ -21,6 +23,9 @@ import java.net.http.HttpResponse;
 @Controller
 @RequiredArgsConstructor
 public class UserController {
+  @Setter
+  @Getter
+  private String authToken;
 
   @FXML
   private Button button;

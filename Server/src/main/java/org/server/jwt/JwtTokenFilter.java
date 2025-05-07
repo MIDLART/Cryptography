@@ -30,17 +30,13 @@ public class JwtTokenFilter extends OncePerRequestFilter {
           throws ServletException, IOException {
 
     try {
-      // 1. Получаем токен из заголовка
       String token = getTokenFromRequest(request);
 
       if (token != null && jwtService.validateToken(token)) {
-        // 2. Получаем username из токена
         String username = jwtService.getUsernameFromToken(token);
 
-        // 3. Загружаем пользователя из БД
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-        // 4. Создаем аутентификацию
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
@@ -48,7 +44,6 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         authentication.setDetails(
                 new WebAuthenticationDetailsSource().buildDetails(request));
 
-        // 5. Устанавливаем аутентификацию в SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authentication);
       }
     } catch (Exception e) {
