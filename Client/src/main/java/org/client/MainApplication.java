@@ -9,6 +9,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.net.URL;
+
 public class MainApplication extends Application {
   private ConfigurableApplicationContext applicationContext;
 
@@ -19,17 +21,11 @@ public class MainApplication extends Application {
 
   @Override
   public void start(Stage primaryStage) throws Exception {
-//    FXMLLoader loader = applicationContext.getBean(FXMLLoader.class);
-//    loader.setLocation(getClass().getResource("/fxml/main.fxml"));
-//
-//    Parent root = loader.load();
-//
-//    primaryStage.setTitle("Crypto Application");
-//    primaryStage.setScene(new Scene(root, 800, 600));
-//    primaryStage.show();
-    FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("fxml/main.fxml"));
-    Scene scene = new Scene(fxmlLoader.load(), 320, 240);
-    primaryStage.setTitle("Hello!");
+    URL url = getClass().getResource("fxml/auth.fxml");
+
+    FXMLLoader fxmlLoader = new FXMLLoader(url);
+    Scene scene = new Scene(fxmlLoader.load());
+    primaryStage.setTitle("Авторизация");
     primaryStage.setScene(scene);
     primaryStage.show();
   }

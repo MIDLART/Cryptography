@@ -144,6 +144,7 @@ public class AuthController {
 
       UserController mainController = loader.getController();
       mainController.setAuthToken(authToken);
+      mainController.setUsername(usernameField.getText());
 
     } catch (IOException e) {
       log.error("Failed to load main view", e);

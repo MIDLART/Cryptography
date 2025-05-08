@@ -52,4 +52,10 @@ public class UserService implements UserDetailsService {
     log.info("User {} authenticated successfully", username);
     return user;
   }
+
+  public boolean findUser(String username) {
+    User user = userRepository.findByName(username);
+
+    return user != null;
+  }
 }
