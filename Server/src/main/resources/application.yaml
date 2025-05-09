@@ -29,6 +29,7 @@ spring:
     port: 5672
     username: guest
     password: guest
+    dynamic: true
 
 jwt:
   secret: bWVvd1NlY3JldEJhc2U2NG1lb3dTZWNyZXRCYXNlNjQ=

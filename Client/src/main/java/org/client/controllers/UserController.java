@@ -1,16 +1,18 @@
 package org.client.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import lombok.*;
 import lombok.extern.log4j.Log4j2;
+import org.client.dto.ChatMessage;
+import org.client.dto.MessageRequest;
 import org.client.services.ChatService;
 import org.springframework.stereotype.Controller;
 
@@ -21,6 +23,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.client.services.CommonService.*;
 
@@ -46,6 +49,7 @@ public class UserController {
   private Path chatFile;
   @FXML private TextArea chatArea;
   @FXML private Button loadChatButton;
+  @FXML private Button updateChatButton;
   @FXML private HBox messageControls;
 
   @FXML
@@ -76,9 +80,48 @@ public class UserController {
 
     try {
       chatFile = chatService.openChat(username, chatArea);
+
       messageControls.setVisible(true);
     } catch (IOException e) {
       showError(messageLabel, "Ошибка загрузки чата: " + e.getMessage());
+    }
+  }
+
+  @FXML
+  private void updateChat() {
+    if (username == null || username.isEmpty()) {
+      showError(messageLabel, "Имя пользователя не установлено");
+      return;
+    }
+
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:8080/load-message?username=" + username))
+            .header("Authorization", "Bearer " + authToken)
+            .GET()
+            .build();
+
+    try {
+      HttpResponse<String> response = HttpClient.newHttpClient()
+              .send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200) {
+        ObjectMapper mapper = new ObjectMapper();
+        List<ChatMessage> messages = mapper.readValue(
+                response.body(),
+                new TypeReference<List<ChatMessage>>() {}
+        );
+
+        for (ChatMessage msg : messages) {
+//          String formattedMsg = String.format("[%s]: %s\n", msg.getSender(), msg.getMessage());
+          chatService.writeMessage(chatFile, msg.getMessage(), chatArea);
+        }
+      } else {
+        showError(messageLabel, "Ошибка сервера: " + response.body());
+      }
+
+    } catch (IOException | InterruptedException e) {
+      log.error("Message loading error", e);
+      showError(messageLabel, "Ошибка получения сообщения: " + e.getMessage());
     }
   }
 
@@ -150,14 +193,5 @@ public class UserController {
     } catch (IOException e) {
       log.error("Ошибка при загрузке формы регистрации", e);
     }
-  }
-
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  public static class MessageRequest {
-    private String sender;
-    private String recipient;
-    private String message;
   }
 }
