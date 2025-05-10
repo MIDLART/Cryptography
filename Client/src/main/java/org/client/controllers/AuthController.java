@@ -2,6 +2,7 @@ package org.client.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -30,17 +31,12 @@ import static org.client.services.CommonService.*;
 @Controller
 @RequiredArgsConstructor
 public class AuthController {
-  @FXML
-  private TextField usernameField;
-  @FXML
-  private PasswordField passwordField;
+  @FXML private TextField usernameField;
+  @FXML private PasswordField passwordField;
 
-  @FXML
-  private Button registerButton;
-  @FXML
-  public Button loginButton;
-  @FXML
-  private Label messageLabel;
+  @FXML private Button registerButton;
+  @FXML public Button loginButton;
+  @FXML private Label messageLabel;
 
   private String authToken;
 
@@ -137,14 +133,21 @@ public class AuthController {
       Scene currentScene = usernameField.getScene();
       Stage stage = (Stage) currentScene.getWindow();
 
+      UserController mainController = loader.getController();
+      stage.setOnCloseRequest(e -> {
+        mainController.shutdown();
+        Platform.exit();
+        System.exit(0);
+      });
+
       Scene mainScene = new Scene(root);
       stage.setScene(mainScene);
       stage.setTitle("Главный экран");
       stage.show();
 
-      UserController mainController = loader.getController();
       mainController.setAuthToken(authToken);
       mainController.setUsername(usernameField.getText());
+      mainController.chats();
 
     } catch (IOException e) {
       log.error("Failed to load main view", e);

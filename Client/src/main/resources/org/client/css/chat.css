@@ -1,0 +1,22 @@
+.message-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 5px;
+}
+
+.message-list .message-left {
+    -fx-alignment: center-left;
+    -fx-background-color: #e6f7ff;
+    -fx-background-radius: 10 10 10 0;
+    -fx-padding: 8px;
+    -fx-max-width: 300px;
+    -fx-wrap-text: true;
+}
+
+.message-list .message-right {
+    -fx-alignment: center-right;
+    -fx-background-color: #d9f7be;
+    -fx-background-radius: 10 10 0 10;
+    -fx-padding: 8px;
+    -fx-max-width: 300px;
+    -fx-wrap-text: true;
+}

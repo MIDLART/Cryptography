@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
+import java.util.Map;
 
 @Log4j2
 @Controller
@@ -62,6 +63,18 @@ public class UserController {
     messages.forEach(msg -> log.debug("Отправляем сообщение: {}", msg));
 
     return ResponseEntity.ok(messages);
+  }
+
+  @PostMapping("/find-user")
+  public ResponseEntity<String> findUser(@RequestBody Map<String, String> request) {
+    String username = request.get("username");
+    log.info("Find user: {}", username);
+
+    if (userService.findUser(username)) {
+      return ResponseEntity.ok("Пользователь существует");
+    }
+
+    return ResponseEntity.badRequest().body("Пользователь не найден");
   }
 
   @GetMapping("/meow")
