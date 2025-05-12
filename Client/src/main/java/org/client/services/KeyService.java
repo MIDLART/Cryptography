@@ -27,31 +27,46 @@ public class KeyService {
     return userChatDir.resolve(chatName + "_invitation.txt");
   }
 
-  public BigInteger readPrivateKey(Path chatFile) throws IOException {
-    String keyString = Files.readString(chatFile);
+  public static Path getInvitationFilePath(String username, String chatName) throws IOException {
+    Path userChatDir = getChatDirectoryPath(username);
+
+    return userChatDir.resolve(chatName + "_deferred.txt");
+  }
+
+  public BigInteger readPrivateKey(Path file) throws IOException {
+    String keyString = Files.readString(file);
 
     return new BigInteger(keyString);
   }
 
   public void writePrivateKey(String username, String chatName, BigInteger key) throws IOException {
-    Path chatFile = getPrivateKeyFilePath(username, chatName);
+    Path file = getPrivateKeyFilePath(username, chatName);
 
     Files.writeString(
-            chatFile,
+            file,
             key.toString(),
             StandardOpenOption.CREATE);
   }
 
   public Path writeFinalKey(String username, String chatName, byte[] key) throws IOException {
-    Path chatFile = getChatFilePath(username, chatName);
+    Path file = getChatFilePath(username, chatName);
 
     Files.writeString(
-            chatFile,
+            file,
             Arrays.toString(key),
             StandardOpenOption.CREATE);
 
-    Files.writeString(chatFile, "\n", StandardOpenOption.APPEND);
+    Files.writeString(file, "\n", StandardOpenOption.APPEND);
 
-    return chatFile;
+    return file;
+  }
+
+  public void writeInvitation(String username, String sender, BigInteger key) throws IOException {
+    Path file = getInvitationFilePath(username, sender);
+
+    Files.writeString(
+            file,
+            key.toString(),
+            StandardOpenOption.CREATE);
   }
 }

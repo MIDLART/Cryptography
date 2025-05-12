@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.client.services.ChatService.getChatFilePath;
 import static org.client.services.CommonService.*;
 import static org.client.services.CommonService.showError;
 
@@ -194,8 +195,6 @@ public class InvitationController {
   }
 
   public InvitationStatus processInvitation(String username, String jsonMessage, String authToken, Label messageLabel) throws IOException {
-    InvitationStatus status = null;
-
     Invitation invitation = keyService.getMapper()
             .readValue(jsonMessage, Invitation.class);
 
@@ -225,6 +224,8 @@ public class InvitationController {
         return new InvitationStatus("reject");
       }
     } else { //Приглашение
+      keyService.writeInvitation(username, sender, B);
+
       var res = new InvitationStatus("invitation");
       res.setSender(sender);
       res.setB(B);
@@ -266,6 +267,45 @@ public class InvitationController {
     }
 
     return newChat;
+  }
+
+  public boolean checkChatExist(String username, String chatName, Label messageLabel) {
+    try {
+      if (Files.exists(getChatFilePath(username, chatName))) {
+        showError(messageLabel, "Чат уже существует");
+        return true;
+      }
+
+      if (Files.exists(keyService.getPrivateKeyFilePath(username, chatName))) {
+        showError(messageLabel, "Приглашение уже отправлено");
+        return true;
+      }
+
+      Path deferredInvitation = keyService.getInvitationFilePath(username, chatName);
+      if (Files.exists(deferredInvitation)) {
+//        BigInteger B = keyService.readInvitation(deferredInvitation);
+//        newChat = sendConfirmation(username, sender, authToken, messageLabel, finalB);
+        showError(messageLabel, "Приглашение уже ожидает вашего ответа");
+        return true;
+      }
+
+    } catch (IOException e) {
+      log.error("Check chat error", e);
+      showError(messageLabel, "Ошибка проверки существования файла");
+      return true;
+    }
+
+    return false;
+  }
+
+  public BigInteger readInvitation(Path file, Label messageLabel) {
+    try {
+      return keyService.readPrivateKey(file);
+    } catch (IOException e) {
+      log.error("Invitation reading error", e);
+      showError(messageLabel, "Ошибка чтения приглашения");
+      return null;
+    }
   }
 
   @Data

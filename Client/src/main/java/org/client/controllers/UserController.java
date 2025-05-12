@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 
 import static org.client.services.ChatService.CHAT_DIR;
 import static org.client.services.CommonService.*;
+import static org.client.services.KeyService.getInvitationFilePath;
 
 @Log4j2
 @Controller
@@ -82,6 +83,20 @@ public class UserController {
                 .filter(p -> p.getFileName().toString().endsWith("_chat.txt"))
                 .forEach(this::addChatButton);
       }
+
+      try (Stream<Path> paths = Files.list(userChatDir)) {
+        paths.filter(Files::isRegularFile)
+                .filter(p -> p.getFileName().toString().endsWith("_deferred.txt"))
+                .forEach(path -> {
+                  String fileName = path.getFileName().toString();
+                  String sender = fileName.substring(0, fileName.length() - "_deferred.txt".length());
+                  BigInteger B = invitationController.readInvitation(path, messageLabel);
+
+                  if (B != null) {
+                    addConfirmationButton(sender, B);
+                  }
+                });
+      }
     } catch (IOException e) {
       log.error("Ошибка при загрузке списка чатов", e);
       showError(messageLabel, "Ошибка загрузки списка чатов: " + e.getMessage());
@@ -107,10 +122,7 @@ public class UserController {
   @FXML
   private void createChat() throws JsonProcessingException {
     String recipient = invitationController.createChat(authToken, messageLabel);
-    if (recipient != null) {
-//      recipientName = recipient;
-//      loadChat();
-//      chats();
+    if (recipient != null && !invitationController.checkChatExist(username, recipient, messageLabel)) {
       invitationController.sendInvitation(username, recipient, authToken, messageLabel);
     }
   }
@@ -278,6 +290,12 @@ public class UserController {
         addChatButton(newChat);
       }
 
+      try {
+        Files.delete(getInvitationFilePath(username, sender));
+      } catch (IOException ex) {
+        log.error("Error deleting the invitation file");
+        showError(messageLabel, "Ошибка удаления файла запроса");
+      }
       Platform.runLater(() -> chatsList.getChildren().remove(button));
     });
 
