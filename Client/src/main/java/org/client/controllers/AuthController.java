@@ -155,28 +155,6 @@ public class AuthController {
     }
   }
 
-  private void testAuthenticatedRequest() {
-    try {
-      HttpRequest request = HttpRequest.newBuilder()
-              .uri(URI.create("http://localhost:8080/meow"))
-              .header("Authorization", "Bearer " + authToken)
-              .GET()
-              .build();
-
-      HttpResponse<String> response = HttpClient.newHttpClient()
-              .send(request, HttpResponse.BodyHandlers.ofString());
-
-      if (response.statusCode() == 200) {
-        showSuccess(messageLabel, "Авторизованный запрос успешен: " + response.body());
-      } else {
-        showError(messageLabel, "Ошибка авторизованного запроса: " + response.body());
-      }
-    } catch (IOException | InterruptedException e) {
-      log.error("Authenticated request error", e);
-      showError(messageLabel, "Ошибка выполнения запроса: " + e.getMessage());
-    }
-  }
-
   @Data
   @AllArgsConstructor
   @NoArgsConstructor
@@ -188,7 +166,7 @@ public class AuthController {
   @Data
   @AllArgsConstructor
   @NoArgsConstructor
-  public class RegistrationResponse {
+  public static class RegistrationResponse {
     private String message;
   }
 

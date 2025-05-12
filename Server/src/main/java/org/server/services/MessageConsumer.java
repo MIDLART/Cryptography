@@ -6,7 +6,7 @@ import com.rabbitmq.client.GetResponse;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.server.configurations.RabbitMQConfig;
-import org.server.dto.ChatMessage;
+import org.server.dto.QueueMessage;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -45,7 +45,6 @@ public class MessageConsumer {
 //      log.error("Failed to initialize RabbitMQ connection and channel: {}", e.getMessage());
 //    }
 //  }
-
 
   public void createQueue(String recipient) {
     String queueName = RabbitMQConfig.QUEUE_PREFIX + recipient;
@@ -89,23 +88,23 @@ public class MessageConsumer {
 //    return message;
 //  }
 
-  public List<ChatMessage> getAllMessagesFromQueue(String username) {
+  public List<QueueMessage> getAllMessagesFromQueue(String username) {
     String queueName = RabbitMQConfig.QUEUE_PREFIX + username;
 
     if (!queueExists(queueName)) {
       return new ArrayList<>();
     }
 
-    List<ChatMessage> messages = new ArrayList<>();
+    List<QueueMessage> messages = new ArrayList<>();
     Message message;
 
     do {
       message = rabbitTemplate.receive(queueName);
       if (message != null) {
         try {
-          ChatMessage chatMessage = objectMapper.readValue(message.getBody(), ChatMessage.class);
+          QueueMessage queueMessage = objectMapper.readValue(message.getBody(), QueueMessage.class);
 
-          messages.add(chatMessage);
+          messages.add(queueMessage);
         } catch (IOException e) {
           log.error("Error deserializing message from queue: {}. Message body: {}", queueName, new String(message.getBody()));
         }

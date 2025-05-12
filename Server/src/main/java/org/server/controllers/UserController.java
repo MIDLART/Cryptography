@@ -2,8 +2,7 @@ package org.server.controllers;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.server.dto.ChatMessage;
-import org.server.dto.MessageRequest;
+import org.server.dto.*;
 import org.server.services.MessageConsumer;
 import org.server.services.MessageProducer;
 import org.server.services.UserService;
@@ -56,9 +55,12 @@ public class UserController {
   }
 
   @GetMapping("/load-message")
-  public ResponseEntity<List<ChatMessage>> loadMessage(@RequestParam("username") String username) {
-    List<ChatMessage> messages = messageConsumer.getAllMessagesFromQueue(username);
-    log.info("Найдено сообщений: {}", messages.size());
+  public ResponseEntity<List<QueueMessage>> loadMessage(@RequestParam("username") String username) {
+    List<QueueMessage> messages = messageConsumer.getAllMessagesFromQueue(username);
+
+    if (!messages.isEmpty()) {
+      log.info("Найдено сообщений: {}", messages.size());
+    }
 
     messages.forEach(msg -> log.debug("Отправляем сообщение: {}", msg));
 
@@ -75,6 +77,20 @@ public class UserController {
     }
 
     return ResponseEntity.badRequest().body("Пользователь не найден");
+  }
+
+  @PostMapping("/send-invitation")
+  public ResponseEntity<String> sendInvitation(@RequestBody InvitationRequest request) {
+    String recipient = request.getRecipient();
+
+    if (!userService.findUser(recipient)) {
+      return ResponseEntity.badRequest().body("Пользователь не найден");
+    }
+
+    messageConsumer.createQueue(recipient);
+
+    messageProducer.sendInvitation(recipient, request.getInvitation());
+    return ResponseEntity.ok("Сообщение отправлено в очередь");
   }
 
   @GetMapping("/meow")

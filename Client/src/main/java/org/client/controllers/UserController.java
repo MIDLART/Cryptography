@@ -2,7 +2,6 @@ package org.client.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -13,13 +12,13 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import lombok.*;
 import lombok.extern.log4j.Log4j2;
-import org.client.dto.ChatMessage;
-import org.client.dto.MessageRequest;
+import org.client.dto.*;
 import org.client.models.Message;
 import org.client.services.ChatService;
 import org.springframework.stereotype.Controller;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
@@ -27,19 +26,23 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import static org.client.services.ChatService.CHAT_DIR;
 import static org.client.services.CommonService.*;
 
 @Log4j2
 @Controller
 public class UserController {
   private final ChatService chatService = new ChatService();
+  private final InvitationController invitationController = new InvitationController();
   private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
   private ScheduledFuture<?> updateTask;
 
@@ -60,13 +63,13 @@ public class UserController {
 
   @Setter @Getter private String recipientName;
 
-  private final ObjectMapper mapper = new ObjectMapper();
+  private Map<String, byte[]> keys = new HashMap<>();
 
   public void chats() {
 //    chatService.loadChatsList(chatsList, username, messageLabel);
     chatsList.getChildren().clear();
 
-    Path userChatDir = Path.of(chatService.getChatDirectory(), username);
+    Path userChatDir = Path.of(CHAT_DIR, username);
 
     try {
       if (!Files.exists(userChatDir)) {
@@ -102,12 +105,13 @@ public class UserController {
   }
 
   @FXML
-  private void createChat() {
-    String recipient = chatService.createChat(authToken, messageLabel);
+  private void createChat() throws JsonProcessingException {
+    String recipient = invitationController.createChat(authToken, messageLabel);
     if (recipient != null) {
-      recipientName = recipient;
-      loadChat();
-      chats();
+//      recipientName = recipient;
+//      loadChat();
+//      chats();
+      invitationController.sendInvitation(username, recipient, authToken, messageLabel);
     }
   }
 
@@ -127,7 +131,7 @@ public class UserController {
     }
 
     try {
-      chatFile = chatService.openChat(username, recipientName, chatListView);
+      chatFile = chatService.openChat(username, recipientName, chatListView, keys);
 
       messageControls.setVisible(true);
 
@@ -159,16 +163,7 @@ public class UserController {
               .send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
-        List<ChatMessage> messages = mapper.readValue(
-                response.body(),
-                new TypeReference<List<ChatMessage>>() {}
-        );
-
-        for (ChatMessage msg : messages) {
-          chatService.interlocutorWriteMessage(
-                  chatService.getChatFilePath(username, msg.getSender()),
-                  msg.getMessage(), chatListView, chatFile);
-        }
+        getMessageList(response.body());
       } else {
         showError(messageLabel, "Ошибка сервера: " + response.body());
       }
@@ -176,6 +171,33 @@ public class UserController {
     } catch (IOException | InterruptedException e) {
       log.error("Message loading error", e);
       showError(messageLabel, "Ошибка получения сообщения: " + e.getMessage());
+    }
+  }
+
+  public void getMessageList(String jsonMessage) throws IOException {
+    List<QueueMessage> messages = chatService.getMapper().readValue(
+            jsonMessage,
+            new TypeReference<List<QueueMessage>>() {}
+    );
+
+    for (QueueMessage msg : messages) {
+      String type = msg.getType();
+      String text = msg.getJsonText();
+
+      if (type.equals("ChatMessage")) {
+        chatService.interlocutorParseAndWriteMessage(username, text, chatListView, chatFile);
+      } else if (type.equals("Invitation")) {
+        InvitationController.InvitationStatus status = invitationController
+                .processInvitation(username, text, authToken, messageLabel);
+
+        log.info(status.getStatus());
+
+        if (status.getStatus().equals("confirm")) {
+          addChatButton(status.getNewChat());
+        } else if (status.getStatus().equals("invitation")) {
+          addConfirmationButton(status.getSender(), status.getB());
+        }
+      }
     }
   }
 
@@ -218,7 +240,7 @@ public class UserController {
     }
 
     MessageRequest messageRequest = new MessageRequest(username, recipient, message);
-    String jsonRequest = mapper.writeValueAsString(messageRequest);
+    String jsonRequest = chatService.getMapper().writeValueAsString(messageRequest);
 
     HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create("http://localhost:8080/send-message"))
@@ -245,6 +267,23 @@ public class UserController {
     messageField.clear();
   }
 
+  private void addConfirmationButton(String sender, BigInteger B) {
+    String buttonName = "Приглашение от " + sender;
+    Button button = new Button(buttonName);
+
+    button.setMaxWidth(Double.MAX_VALUE);
+    button.setOnAction(e -> {
+      Path newChat = invitationController.invitationDialog(username, sender, B, authToken, messageLabel);
+      if (newChat != null) {
+        addChatButton(newChat);
+      }
+
+      Platform.runLater(() -> chatsList.getChildren().remove(button));
+    });
+
+    Platform.runLater(() -> chatsList.getChildren().add(button));
+  }
+
   @FXML
   private void goToAuth() {
     try {
@@ -259,6 +298,8 @@ public class UserController {
     } catch (IOException e) {
       log.error("Ошибка при загрузке формы регистрации", e);
     }
+
+    shutdown();
   }
 
   public void shutdown() {

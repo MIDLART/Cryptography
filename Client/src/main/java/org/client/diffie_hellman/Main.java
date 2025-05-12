@@ -7,13 +7,11 @@ public class Main {
   public static void main(String[] args) {
     var dhA = new DiffieHellmanProtocol();
 
-    BigInteger A = dhA.getA();
-    BigInteger p = dhA.getP();
-    BigInteger g = dhA.getG();
+    BigInteger A = dhA.getPublicA();
 
-    var dhB = new DiffieHellmanProtocol(p, g);
+    var dhB = new DiffieHellmanProtocol();
 
-    BigInteger B = dhB.getA();
+    BigInteger B = dhB.getPublicA();
 
     System.out.println(Arrays.toString(dhA.getKey(B)));
     System.out.println(Arrays.toString(dhB.getKey(A)));
