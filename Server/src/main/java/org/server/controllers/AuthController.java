@@ -24,9 +24,14 @@ public class AuthController {
 
   @PostMapping("/registration")
   public ResponseEntity<RegistrationResponse> registerUser(@RequestBody User user) {
-    if (!isValidUsername(user.getUsername())) {
+    if (!isValid(user.getUsername())) {
       return ResponseEntity.badRequest().body(
               new RegistrationResponse("Имя пользователя невалидно. Имя должно содержать до 25 символов (буквы, цифры, _)"));
+    }
+
+    if (!isValid(user.getPassword())) {
+      return ResponseEntity.badRequest().body(
+              new RegistrationResponse("Пароль невалиден. Он должен содержать до 25 символов (буквы, цифры, _)"));
     }
 
     boolean isCreated = userService.createUser(user);
@@ -61,10 +66,10 @@ public class AuthController {
     }
   }
 
-  private boolean isValidUsername(String username) {
-    if (username == null ||username.isEmpty() || username.length() > 25) {
+  private boolean isValid(String str) {
+    if (str == null || str.isEmpty() || str.length() > 25) {
       return false;
     }
-    return username.matches("^[a-zA-Z0-9_]+$");
+    return str.matches("^[a-zA-Z0-9_]+$");
   }
 }

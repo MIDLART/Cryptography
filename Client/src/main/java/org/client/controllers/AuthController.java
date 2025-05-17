@@ -7,10 +7,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.stage.Stage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -39,6 +36,17 @@ public class AuthController {
   @FXML private Label messageLabel;
 
   private String authToken;
+
+  public void initialize() {
+    TextFormatter<String> textFormatter = new TextFormatter<>(change -> {
+      if (change.getControlNewText().length() > 50) {
+        return null;
+      }
+      return change;
+    });
+    usernameField.setTextFormatter(textFormatter);
+    passwordField.setTextFormatter(textFormatter);
+  }
 
   @FXML
   private void registration() throws JsonProcessingException {

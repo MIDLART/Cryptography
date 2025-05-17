@@ -66,6 +66,16 @@ public class UserController {
 
   private Map<String, byte[]> keys = new HashMap<>();
 
+  public void initialize() {
+    TextFormatter<String> textFormatter = new TextFormatter<>(change -> {
+      if (change.getControlNewText().length() > 1000) {
+        return null;
+      }
+      return change;
+    });
+    messageField.setTextFormatter(textFormatter);
+  }
+
   public void chats() {
 //    chatService.loadChatsList(chatsList, username, messageLabel);
     chatsList.getChildren().clear();
