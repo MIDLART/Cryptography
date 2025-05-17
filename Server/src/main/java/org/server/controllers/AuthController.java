@@ -1,10 +1,10 @@
 package org.server.controllers;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.server.dto.LoginRequest;
+import org.server.dto.LoginResponse;
+import org.server.dto.RegistrationResponse;
 import org.server.jwt.JwtService;
 import org.server.models.User;
 import org.server.services.UserService;
@@ -24,6 +24,11 @@ public class AuthController {
 
   @PostMapping("/registration")
   public ResponseEntity<RegistrationResponse> registerUser(@RequestBody User user) {
+    if (!isValidUsername(user.getUsername())) {
+      return ResponseEntity.badRequest().body(
+              new RegistrationResponse("Имя пользователя невалидно. Имя должно содержать до 25 символов (буквы, цифры, _)"));
+    }
+
     boolean isCreated = userService.createUser(user);
 
     log.info("User: {}", user);
@@ -56,34 +61,10 @@ public class AuthController {
     }
   }
 
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  private static class RegistrationRequest {
-    private String name;
-    private String password;
-  }
-
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  public class RegistrationResponse {
-    private String message;
-  }
-
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  private static class LoginRequest {
-    private String username;
-    private String password;
-  }
-
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  private static class LoginResponse {
-    private String message;
-    private String token;
+  private boolean isValidUsername(String username) {
+    if (username == null ||username.isEmpty() || username.length() > 25) {
+      return false;
+    }
+    return username.matches("^[a-zA-Z0-9_]+$");
   }
 }

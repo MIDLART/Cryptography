@@ -12,11 +12,11 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.client.dto.LoginRequest;
+import org.client.dto.LoginResponse;
+import org.client.dto.RegistrationRequest;
 import org.springframework.stereotype.Controller;
 
 import java.io.IOException;
@@ -153,36 +153,5 @@ public class AuthController {
       log.error("Failed to load main view", e);
       showError(messageLabel, "Ошибка загрузки главного экрана");
     }
-  }
-
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  private static class RegistrationRequest {
-    private String name;
-    private String password;
-  }
-
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  public static class RegistrationResponse {
-    private String message;
-  }
-
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  private static class LoginRequest {
-    private String username;
-    private String password;
-  }
-
-  @Data
-  @AllArgsConstructor
-  @NoArgsConstructor
-  private static class LoginResponse {
-    private String message;
-    private String token;
   }
 }
