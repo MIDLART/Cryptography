@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 
+import static java.lang.Thread.sleep;
 import static org.client.crypto.enums.EncryptionMode.*;
 import static org.client.crypto.enums.PackingMode.ANSIX923;
 
@@ -47,11 +48,11 @@ public class AsyncTest {
 
     CancellableCompletableFuture<Void> decryptFuture = cryptoContext.decryptAsync(encOut, decOut);
 
-    Thread.sleep(100);
+    sleep(100);
 
     decryptFuture.cancel(true);
 
-    Thread.sleep(100);
+    sleep(100);
     System.out.println(ForkJoinPool.commonPool().getActiveThreadCount());
 
 
@@ -81,6 +82,46 @@ public class AsyncTest {
     encryptFuture.get();
 
     CancellableCompletableFuture<Void> decryptFuture = cryptoContext.decryptAsync(encOut, decOut);
+    decryptFuture.get();
+
+    // ASSERTION
+    Assert.assertTrue(areFilesEqual(in, decOut));
+  }
+
+  @Test
+  void testEncryptionProgress() throws IOException, ExecutionException, InterruptedException {
+    // SETUP
+    byte[] key = {
+            (byte) 0x55, (byte) 0x46, (byte) 0xEA, (byte) 0xDD, (byte) 0x5C, (byte) 0x59, (byte) 0xE9
+    };
+    byte[] initVector = {
+            (byte) 0x5a, (byte) 0xa8, (byte) 0x08, (byte) 0x43, (byte) 0x19, (byte) 0xe5, (byte) 0xd8, (byte) 0x2d,
+    };
+
+    String in = testDirectory + "/picture.jpg";
+    String encOut = testDirectory + "/encryptedPicture";
+    String decOut = testDirectory + "/decryptedPicture.jpg";
+
+    // EXECUTION
+    var cryptoSystem = new DES(key);
+    var cryptoContext = new SymmetricAlgorithm(cryptoSystem, CTR, ANSIX923, initVector);
+
+    CancellableCompletableFuture<Void> encryptFuture = cryptoContext.encryptAsync(in, encOut);
+
+    while (!encryptFuture.isDone()) {
+      sleep(100);
+      System.out.println((int) encryptFuture.getProgress() + "%");
+    }
+
+    encryptFuture.get();
+
+    CancellableCompletableFuture<Void> decryptFuture = cryptoContext.decryptAsync(encOut, decOut);
+
+    while (!decryptFuture.isDone()) {
+      sleep(100);
+      System.out.println((int) decryptFuture.getProgress() + "%");
+    }
+
     decryptFuture.get();
 
     // ASSERTION
