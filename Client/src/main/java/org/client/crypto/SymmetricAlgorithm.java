@@ -1,5 +1,6 @@
 package org.client.crypto;
 
+import org.client.crypto.async.CancellableCompletableFuture;
 import org.client.crypto.block.*;
 import org.client.crypto.enums.EncryptOrDecrypt;
 import org.client.crypto.enums.EncryptionMode;
@@ -12,7 +13,7 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
@@ -45,6 +46,10 @@ public class SymmetricAlgorithm {
     packing = new Packing(blockSize, packingMode);
   }
 
+//  public SymmetricAlgorithm(SymmetricEncryption symmetricEncryption, EncryptionMode encryptionMode, PackingMode packingMode, byte[] IV) {
+//    this(symmetricEncryption, encryptionMode, packingMode, IV, BigInteger.valueOf(1));
+//  }
+
   public SymmetricAlgorithm(SymmetricEncryption symmetricEncryption, EncryptionMode encryptionMode, PackingMode packingMode, byte[] IV) {
     this.symmetricEncryption = symmetricEncryption;
     this.encryptionMode = encryptionMode;
@@ -74,41 +79,95 @@ public class SymmetricAlgorithm {
     packing = new Packing(blockSize, packingMode);
   }
 
-  public CompletableFuture<Void> encryptAsync(byte[] input, byte[] output) {
-    return CompletableFuture.runAsync(() -> encrypt(input, output));
+//  public CompletableFuture<Void> encryptAsync(byte[] input, byte[] output) {
+//    return CompletableFuture.runAsync(() -> encrypt(input, output));
+//  }
+//
+//  public CompletableFuture<Void> encryptAsync(String inputFile, String outputFile) {
+//    return CompletableFuture.runAsync(() -> encrypt(inputFile, outputFile));
+//  }
+//
+//  public CompletableFuture<byte[]> encryptAsync(byte[] input) {
+//    return CompletableFuture.supplyAsync(() -> encrypt(input));
+//  }
+//
+//  public CompletableFuture<Void> decryptAsync(byte[] input, byte[] output) {
+//    return CompletableFuture.runAsync(() -> decrypt(input, output));
+//  }
+//
+//  public CompletableFuture<Void> decryptAsync(String inputFile, String outputFile) {
+//    return CompletableFuture.runAsync(() -> decrypt(inputFile, outputFile));
+//  }
+//
+//  public CompletableFuture<byte[]> decryptAsync(byte[] input) {
+//    return CompletableFuture.supplyAsync(() -> decrypt(input));
+//  }
+
+  public CancellableCompletableFuture<Void> encryptAsync(byte[] input, byte[] output) {
+    AtomicBoolean cancelled = new AtomicBoolean(false);
+    return CancellableCompletableFuture.runAsync(() -> encrypt(input, output, cancelled), cancelled);
   }
 
-  public CompletableFuture<Void> encryptAsync(String inputFile, String outputFile) {
-    return CompletableFuture.runAsync(() -> encrypt(inputFile, outputFile));
+  public CancellableCompletableFuture<Void> encryptAsync(String inputFile, String outputFile) {
+    AtomicBoolean cancelled = new AtomicBoolean(false);
+    return CancellableCompletableFuture.runAsync(() -> encrypt(inputFile, outputFile, cancelled), cancelled);
   }
 
-  public CompletableFuture<byte[]> encryptAsync(byte[] input) {
-    return CompletableFuture.supplyAsync(() -> encrypt(input));
+  public CancellableCompletableFuture<byte[]> encryptAsync(byte[] input) {
+    AtomicBoolean cancelled = new AtomicBoolean(false);
+    return CancellableCompletableFuture.supplyAsync(() -> encrypt(input, cancelled), cancelled);
   }
 
-  public CompletableFuture<Void> decryptAsync(byte[] input, byte[] output) {
-    return CompletableFuture.runAsync(() -> decrypt(input, output));
+  public CancellableCompletableFuture<Void> decryptAsync(byte[] input, byte[] output) {
+    AtomicBoolean cancelled = new AtomicBoolean(false);
+    return CancellableCompletableFuture.runAsync(() -> decrypt(input, output, cancelled), cancelled);
   }
 
-  public CompletableFuture<Void> decryptAsync(String inputFile, String outputFile) {
-    return CompletableFuture.runAsync(() -> decrypt(inputFile, outputFile));
+  public CancellableCompletableFuture<Void> decryptAsync(String inputFile, String outputFile) {
+    AtomicBoolean cancelled = new AtomicBoolean(false);
+    return CancellableCompletableFuture.runAsync(() -> decrypt(inputFile, outputFile, cancelled), cancelled);
   }
 
-  public CompletableFuture<byte[]> decryptAsync(byte[] input) {
-    return CompletableFuture.supplyAsync(() -> decrypt(input));
+  public CancellableCompletableFuture<byte[]> decryptAsync(byte[] input) {
+    AtomicBoolean cancelled = new AtomicBoolean(false);
+    return CancellableCompletableFuture.supplyAsync(() -> decrypt(input, cancelled), cancelled);
   }
 
   public byte[] encrypt(byte[] input) {
+    return encrypt(input, (AtomicBoolean) null);
+  }
+
+  public void encrypt(byte[] input, byte[] output) {
+    encrypt(input, output, null);
+  }
+
+  public void encrypt(String inputFile, String outputFile) {
+    encrypt(inputFile, outputFile, null);
+  }
+
+  public void decrypt(byte[] input, byte[] output) {
+    decrypt(input, output, null);
+  }
+
+  public byte[] decrypt(byte[] input) {
+    return decrypt(input, (AtomicBoolean) null);
+  }
+
+  public void decrypt(String inputFile, String outputFile) {
+    decrypt(inputFile, outputFile, null);
+  }
+
+  public byte[] encrypt(byte[] input, AtomicBoolean cancelled) {
     int inputLength = input.length;
 
     byte[] output = new byte[getBlockCount(inputLength, ENCRYPT) * blockSize];
 
-    encrypt(input, output);
+    encrypt(input, output, cancelled);
 
     return output;
   }
 
-  public void encrypt(byte[] input, byte[] output) {
+  public void encrypt(byte[] input, byte[] output, AtomicBoolean cancelled) {
     int inputLength = input.length;
 
     if (inputLength == 0) {
@@ -122,20 +181,20 @@ public class SymmetricAlgorithm {
     ReadBlock readBlock = new ArrayRead(input, blockSize, packing::fill);
     WriteBlock writeBlock = new ArrayWrite(output, blockSize);
 
-    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, ENCRYPT), ENCRYPT);
+    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, ENCRYPT), ENCRYPT, cancelled);
   }
 
-  public void encrypt(String inputFile, String outputFile) {
+  public void encrypt(String inputFile, String outputFile, AtomicBoolean cancelled) {
     fileErrorCheck(inputFile, outputFile);
     long inputLength = new File(inputFile).length();
 
     ReadBlock readBlock = new FileRead(inputFile, blockSize, packing::fill);
     WriteBlock writeBlock = new FileWrite(outputFile, blockSize);
 
-    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, ENCRYPT), ENCRYPT);
+    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, ENCRYPT), ENCRYPT, cancelled);
   }
 
-  public void decrypt(byte[] input, byte[] output) {
+  public void decrypt(byte[] input, byte[] output, AtomicBoolean cancelled) {
     int inputLength = input.length;
 
     if (inputLength == 0) {
@@ -149,10 +208,10 @@ public class SymmetricAlgorithm {
     ReadBlock readBlock = new ArrayRead(input, blockSize);
     WriteBlock writeBlock = new ArrayWrite(output, blockSize, packing::unpack);
 
-    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, DECRYPT), DECRYPT);
+    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, DECRYPT), DECRYPT, cancelled);
   }
 
-  public byte[] decrypt(byte[] input) {
+  public byte[] decrypt(byte[] input, AtomicBoolean cancelled) {
     int inputLength = input.length;
 
     if (inputLength == 0) {
@@ -167,30 +226,30 @@ public class SymmetricAlgorithm {
     ReadBlock readBlock = new ArrayRead(input, blockSize);
     WriteBlock writeBlock = new ListWrite(outputList, blockSize, inputLength, packing::unpack);
 
-    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, DECRYPT), DECRYPT);
+    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, DECRYPT), DECRYPT, cancelled);
 
     return listToArray(outputList);
   }
 
-  public void decrypt(String inputFile, String outputFile) {
+  public void decrypt(String inputFile, String outputFile, AtomicBoolean cancelled) {
     fileErrorCheck(inputFile, outputFile);
     long inputLength = new File(inputFile).length();
 
     ReadBlock readBlock = new FileRead(inputFile, blockSize);
     WriteBlock writeBlock = new FileWrite(outputFile, blockSize, inputLength, packing::unpack);
 
-    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, DECRYPT), DECRYPT);
+    encryptionMode(readBlock, writeBlock, getBlockCount(inputLength, DECRYPT), DECRYPT, cancelled);
   }
 
-  private void encryptionMode(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt) {
+  private void encryptionMode(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt, AtomicBoolean cancelled) {
     switch (encryptionMode) {
-      case EncryptionMode.ECB -> ECB(readBlock, writeBlock, blockCount, encryptOrDecrypt);
-      case EncryptionMode.CBC -> CBC(readBlock, writeBlock, blockCount, encryptOrDecrypt);
-      case EncryptionMode.CFB -> CFB(readBlock, writeBlock, blockCount, encryptOrDecrypt);
-      case EncryptionMode.CTR -> CTR(readBlock, writeBlock, blockCount, encryptOrDecrypt);
-      case EncryptionMode.OFB -> OFB(readBlock, writeBlock, blockCount, encryptOrDecrypt);
-      case EncryptionMode.PCBC -> PCBC(readBlock, writeBlock, blockCount, encryptOrDecrypt);
-      case EncryptionMode.RandomDelta -> RandomDelta(readBlock, writeBlock, blockCount, encryptOrDecrypt);
+      case EncryptionMode.ECB -> ECB(readBlock, writeBlock, blockCount, encryptOrDecrypt, cancelled);
+      case EncryptionMode.CBC -> CBC(readBlock, writeBlock, blockCount, encryptOrDecrypt, cancelled);
+      case EncryptionMode.CFB -> CFB(readBlock, writeBlock, blockCount, encryptOrDecrypt, cancelled);
+      case EncryptionMode.CTR -> CTR(readBlock, writeBlock, blockCount, encryptOrDecrypt, cancelled);
+      case EncryptionMode.OFB -> OFB(readBlock, writeBlock, blockCount, encryptOrDecrypt, cancelled);
+      case EncryptionMode.PCBC -> PCBC(readBlock, writeBlock, blockCount, encryptOrDecrypt, cancelled);
+      case EncryptionMode.RandomDelta -> RandomDelta(readBlock, writeBlock, blockCount, encryptOrDecrypt, cancelled);
     }
   }
 
@@ -220,17 +279,25 @@ public class SymmetricAlgorithm {
 
   /// Encryption Modes
 
-  private void ECB(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt) {
+
+  private void ECB(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt, AtomicBoolean cancelled) {
     Function<byte[], byte[]> function = encryptOrDecrypt == ENCRYPT ?
             symmetricEncryption::encryption : symmetricEncryption::decryption;
 
-    IntStream.range(0, blockCount).parallel().forEach(i -> {
-      byte[] buffer = readBlock.get(i);
-      writeBlock.put(i, function.apply(buffer));
-    });
+    try {
+      IntStream.range(0, blockCount).parallel().forEach(i -> {
+        if (cancelled != null && cancelled.get()) {
+          throw new RuntimeException("Stopped");
+        }
+        byte[] buffer = readBlock.get(i);
+        writeBlock.put(i, function.apply(buffer));
+      });
+    } catch (Exception _) {
+      throw new RuntimeException("Stopped");
+    }
   }
 
-  private void CBC(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt) {
+  private void CBC(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt, AtomicBoolean cancelled) {
     Function<byte[], byte[]> function;
 
     byte[] first = readBlock.get(0);
@@ -242,6 +309,10 @@ public class SymmetricAlgorithm {
       writeBlock.put(0, c);
 
       for (int i = 1; i < blockCount; i++) {
+        if (cancelled != null && cancelled.get()) {
+          throw new RuntimeException("Stopped");
+        }
+
         byte[] m = readBlock.get(i);
         c = function.apply(xor(m, c));
 
@@ -252,21 +323,33 @@ public class SymmetricAlgorithm {
 
       writeBlock.put(0, xor(function.apply(first), IV));
 
-      IntStream.range(1, blockCount).parallel().forEach(i -> {
-        byte[] c = readBlock.get(i);
-        byte[] prevC = readBlock.get(i - 1);
+      try {
+        IntStream.range(1, blockCount).parallel().forEach(i -> {
+          if (cancelled != null && cancelled.get()) {
+            throw new RuntimeException("Stopped");
+          }
 
-        writeBlock.put(i, xor(function.apply(c), prevC));
-      });
+          byte[] c = readBlock.get(i);
+          byte[] prevC = readBlock.get(i - 1);
+
+          writeBlock.put(i, xor(function.apply(c), prevC));
+        });
+      } catch (Exception _) {
+        throw new RuntimeException("Stopped");
+      }
     }
   }
 
-  private void OFB(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt) {
+  private void OFB(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt, AtomicBoolean cancelled) {
     Function<byte[], byte[]> function = symmetricEncryption::encryption;
 
     byte[] E = IV;
 
     for (int i = 0; i < blockCount; i++) {
+      if (cancelled != null && cancelled.get()) {
+        throw new RuntimeException("Stopped");
+      }
+
       byte[] buffer = readBlock.get(i);
       E = function.apply(E);
 
@@ -274,7 +357,7 @@ public class SymmetricAlgorithm {
     }
   }
 
-  private void CFB(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt) {
+  private void CFB(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt, AtomicBoolean cancelled) {
     Function<byte[], byte[]> function = symmetricEncryption::encryption;
 
     byte[] first = readBlock.get(0);
@@ -284,6 +367,10 @@ public class SymmetricAlgorithm {
       writeBlock.put(0, c);
 
       for (int i = 1; i < blockCount; i++) {
+        if (cancelled != null && cancelled.get()) {
+          throw new RuntimeException("Stopped");
+        }
+
         byte[] m = readBlock.get(i);
         c = xor(function.apply(c), m);
 
@@ -292,16 +379,24 @@ public class SymmetricAlgorithm {
     } else {
       writeBlock.put(0, xor(function.apply(IV), first));
 
-      IntStream.range(1, blockCount).parallel().forEach(i -> {
-        byte[] c = readBlock.get(i);
-        byte[] prevC = readBlock.get(i - 1);
+      try {
+        IntStream.range(1, blockCount).parallel().forEach(i -> {
+          if (cancelled != null && cancelled.get()) {
+            throw new RuntimeException("Stopped");
+          }
 
-        writeBlock.put(i, xor(function.apply(prevC), c));
-      });
+          byte[] c = readBlock.get(i);
+          byte[] prevC = readBlock.get(i - 1);
+
+          writeBlock.put(i, xor(function.apply(prevC), c));
+        });
+      } catch (Exception _) {
+        throw new RuntimeException("Stopped");
+      }
     }
   }
 
-  private void PCBC(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt) {
+  private void PCBC(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt, AtomicBoolean cancelled) {
     Function<byte[], byte[]> function;
 
     byte[] first = readBlock.get(0);
@@ -313,6 +408,10 @@ public class SymmetricAlgorithm {
       writeBlock.put(0, c);
 
       for (int i = 1; i < blockCount; i++) {
+        if (cancelled != null && cancelled.get()) {
+          throw new RuntimeException("Stopped");
+        }
+
         byte[] m = readBlock.get(i);
         byte[] prevM = readBlock.get(i - 1);
         c = function.apply(xor(xor(m, c), prevM));
@@ -326,6 +425,10 @@ public class SymmetricAlgorithm {
       writeBlock.put(0, m);
 
       for (int i = 1; i < blockCount; i++) {
+        if (cancelled != null && cancelled.get()) {
+          throw new RuntimeException("Stopped");
+        }
+
         byte[] c = readBlock.get(i);
         byte[] prevC = readBlock.get(i - 1);
         m = xor(xor(function.apply(c), prevC), m);
@@ -335,24 +438,40 @@ public class SymmetricAlgorithm {
     }
   }
 
-  private void CTR(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt) {
+  private void CTR(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt, AtomicBoolean cancelled) {
     Function<byte[], byte[]> function = symmetricEncryption::encryption;
     BigInteger count = new BigInteger(IV);
 
-    IntStream.range(0, blockCount).parallel().forEach(i -> {
-      byte[] buffer = readBlock.get(i);
-      writeBlock.put(i, xor(buffer, function.apply(counter(count, BigInteger.valueOf(i)))));
-    });
+    try {
+      IntStream.range(0, blockCount).parallel().forEach(i -> {
+        if (cancelled != null && cancelled.get()) {
+          throw new RuntimeException("Stopped");
+        }
+
+        byte[] buffer = readBlock.get(i);
+        writeBlock.put(i, xor(buffer, function.apply(counter(count, BigInteger.valueOf(i)))));
+      });
+    } catch (Exception _) {
+      throw new RuntimeException("Stopped");
+    }
   }
 
-  private void RandomDelta(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt) {
+  private void RandomDelta(ReadBlock readBlock, WriteBlock writeBlock, int blockCount, EncryptOrDecrypt encryptOrDecrypt, AtomicBoolean cancelled) {
     Function<byte[], byte[]> function = symmetricEncryption::encryption;
     BigInteger count = new BigInteger(IV);
 
-    IntStream.range(0, blockCount).parallel().forEach(i -> {
-      byte[] buffer = readBlock.get(i);
-      writeBlock.put(i, xor(buffer, function.apply(counter(count, modularMultiply(RD, i)))));
-    });
+    try {
+      IntStream.range(0, blockCount).parallel().forEach(i -> {
+        if (cancelled != null && cancelled.get()) {
+          throw new RuntimeException("Stopped");
+        }
+
+        byte[] buffer = readBlock.get(i);
+        writeBlock.put(i, xor(buffer, function.apply(counter(count, modularMultiply(RD, i)))));
+      });
+    } catch (Exception _) {
+      throw new RuntimeException("Stopped");
+    }
   }
 
   private byte[] counter(BigInteger num, BigInteger n) {

@@ -1428,7 +1428,7 @@ public class DESContextTest {
 
     // EXECUTION
     var cryptoSystem = new DES(key);
-    var cryptoContext = new SymmetricAlgorithm(cryptoSystem, PCBC, PKCS7, initVector);
+    var cryptoContext = new SymmetricAlgorithm(cryptoSystem, CTR, PKCS7, initVector);
 
     cryptoContext.encrypt(in, encOut);
     cryptoContext.decrypt(encOut, decOut);
@@ -1453,7 +1453,7 @@ public class DESContextTest {
 
     // EXECUTION
     var cryptoSystem = new DES(key);
-    var cryptoContext = new SymmetricAlgorithm(cryptoSystem, OFB, ANSIX923, initVector);
+    var cryptoContext = new SymmetricAlgorithm(cryptoSystem, CTR, ANSIX923, initVector);
 
     cryptoContext.encrypt(in, encOut);
     cryptoContext.decrypt(encOut, decOut);

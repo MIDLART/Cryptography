@@ -174,7 +174,7 @@ public class DEALContextTest {
 
     // EXECUTION
     var cryptoSystem = new DEAL(key);
-    var cryptoContext = new SymmetricAlgorithm(cryptoSystem, OFB, ANSIX923, initVector);
+    var cryptoContext = new SymmetricAlgorithm(cryptoSystem, CTR, ANSIX923, initVector);
 
     cryptoContext.encrypt(in, encOut);
     cryptoContext.decrypt(encOut, decOut);
