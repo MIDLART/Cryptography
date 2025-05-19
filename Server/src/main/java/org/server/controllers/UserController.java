@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -46,7 +47,7 @@ public class UserController {
       return ResponseEntity.badRequest().body("Пользователь не найден");
     }
 
-    log.info("Сообщение от {} для {}: {}", username, recipient, message);
+    log.info("Сообщение от {} для {}: {}", username, recipient, Arrays.toString(message.getBytes()));
 
     messageConsumer.createQueue(recipient);
 

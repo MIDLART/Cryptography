@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -53,10 +54,8 @@ public class KeyService {
 
     Files.writeString(
             file,
-            Arrays.toString(key),
+            new String (Arrays.copyOfRange(key, 0, 32), StandardCharsets.UTF_8) + "\n",
             StandardOpenOption.CREATE);
-
-    Files.writeString(file, "\n", StandardOpenOption.APPEND);
 
     return file;
   }

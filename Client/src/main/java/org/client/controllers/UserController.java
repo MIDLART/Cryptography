@@ -12,9 +12,13 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import lombok.*;
 import lombok.extern.log4j.Log4j2;
+import org.client.crypto.SymmetricAlgorithm;
+import org.client.crypto.enums.EncryptionMode;
+import org.client.crypto.enums.PackingMode;
 import org.client.dto.*;
 import org.client.models.Message;
 import org.client.services.ChatService;
+import org.client.services.MessageService;
 import org.springframework.stereotype.Controller;
 
 import java.io.IOException;
@@ -42,7 +46,15 @@ import static org.client.services.KeyService.getInvitationFilePath;
 @Log4j2
 @Controller
 public class UserController {
-  private final ChatService chatService = new ChatService();
+  private final Map<String, SymmetricAlgorithm> encryptionAlgorithms = new HashMap<>();
+  private final EncryptionMode encryptionMode = EncryptionMode.ECB;
+  private final PackingMode packingMode = PackingMode.ANSIX923;
+  private final byte[] initVector =
+          {(byte) 0x89, (byte) 0x01, (byte) 0x37, (byte) 0x23, (byte) 0xA0, (byte) 0xB1, (byte) 0x99, (byte) 0xE4,
+           (byte) 0xDE, (byte) 0x73, (byte) 0x23, (byte) 0x5A, (byte) 0x5B, (byte) 0x52, (byte) 0x8F, (byte) 0x8B,};
+
+  private final MessageService messageService = new MessageService();
+  private final ChatService chatService = new ChatService(encryptionMode, packingMode, initVector);
   private final InvitationController invitationController = new InvitationController();
   private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
   private ScheduledFuture<?> updateTask;
@@ -64,15 +76,11 @@ public class UserController {
 
   @Setter @Getter private String recipientName;
 
-  private Map<String, byte[]> keys = new HashMap<>();
 
   public void initialize() {
-    TextFormatter<String> textFormatter = new TextFormatter<>(change -> {
-      if (change.getControlNewText().length() > 1000) {
-        return null;
-      }
-      return change;
-    });
+    TextFormatter<String> textFormatter = new TextFormatter<>(change ->
+            change.getControlNewText().length() > 1000 ? null : change);
+
     messageField.setTextFormatter(textFormatter);
   }
 
@@ -153,7 +161,7 @@ public class UserController {
     }
 
     try {
-      chatFile = chatService.openChat(username, recipientName, chatListView, keys);
+      chatFile = chatService.openChat(username, recipientName, chatListView, encryptionAlgorithms);
 
       messageControls.setVisible(true);
 
@@ -207,7 +215,7 @@ public class UserController {
       String text = msg.getJsonText();
 
       if (type.equals("ChatMessage")) {
-        chatService.interlocutorParseAndWriteMessage(username, text, chatListView, chatFile);
+        chatService.interlocutorParseAndWriteMessage(username, text, chatListView, chatFile, encryptionAlgorithms);
       } else if (type.equals("Invitation")) {
         InvitationController.InvitationStatus status = invitationController
                 .processInvitation(username, text, authToken, messageLabel);
@@ -261,30 +269,8 @@ public class UserController {
       return;
     }
 
-    MessageRequest messageRequest = new MessageRequest(username, recipient, message);
-    String jsonRequest = chatService.getMapper().writeValueAsString(messageRequest);
-
-    HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:8080/send-message"))
-            .header("Authorization", "Bearer " + authToken)
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(jsonRequest))
-            .build();
-
-    try {
-      HttpResponse<String> response = HttpClient.newHttpClient()
-              .send(request, HttpResponse.BodyHandlers.ofString());
-
-      if (response.statusCode() == 200) {
-        chatService.meWriteMessage(chatFile, message, chatListView, chatFile);
-      } else {
-        showError(messageLabel, "Ошибка сервера: " + response.body());
-      }
-
-    } catch (IOException | InterruptedException e) {
-      log.error("Message sending error", e);
-      showError(messageLabel, "Ошибка отправки сообщения: " + e.getMessage());
-    }
+    messageService.sendAsync(username, recipient, message, encryptionAlgorithms,
+            authToken, chatFile, chatListView, messageLabel, chatService);
 
     messageField.clear();
   }

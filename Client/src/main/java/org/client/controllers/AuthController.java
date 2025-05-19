@@ -21,6 +21,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.function.UnaryOperator;
 
 import static org.client.services.CommonService.*;
 
@@ -38,14 +39,11 @@ public class AuthController {
   private String authToken;
 
   public void initialize() {
-    TextFormatter<String> textFormatter = new TextFormatter<>(change -> {
-      if (change.getControlNewText().length() > 50) {
-        return null;
-      }
-      return change;
-    });
-    usernameField.setTextFormatter(textFormatter);
-    passwordField.setTextFormatter(textFormatter);
+    UnaryOperator<TextFormatter.Change> lengthFilter = change ->
+            change.getControlNewText().length() > 50 ? null : change;
+
+    usernameField.setTextFormatter(new TextFormatter<>(lengthFilter));
+    passwordField.setTextFormatter(new TextFormatter<>(lengthFilter));
   }
 
   @FXML
