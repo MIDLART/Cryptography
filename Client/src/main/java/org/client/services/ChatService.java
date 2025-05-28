@@ -154,7 +154,7 @@ public class ChatService {
     writeMessage(chatFile, true, message, chatListView, curOpenChat);
   }
 
-  public void interlocutorWriteMessage(String username, String chatName, String message,
+  public void interlocutorWriteMessage(String username, String chatName, byte[] message,
                                        ListView<Message> chatListView, Path curOpenChat,
                                        Map<String, SymmetricAlgorithm> encryptionAlgorithms) throws IOException {
 
@@ -177,7 +177,7 @@ public class ChatService {
       algorithm = encryptionAlgorithms.get(chatName);
     }
 
-    CancellableCompletableFuture<byte[]> decryptFuture = algorithm.decryptAsync(Base64.getDecoder().decode(message));
+    CancellableCompletableFuture<byte[]> decryptFuture = algorithm.decryptAsync(message);
 
     byte[] decryptedMessage;
     try {
@@ -194,7 +194,7 @@ public class ChatService {
             chatListView, curOpenChat);
   }
 
-  public CompletableFuture<Void> interlocutorWriteMessageAsync(String username, String chatName, String message,
+  public CompletableFuture<Void> interlocutorWriteMessageAsync(String username, String chatName, byte[] message,
                                                                ListView<Message> chatListView, Path curOpenChat,
                                                                Map<String, SymmetricAlgorithm> encryptionAlgorithms) {
     return CompletableFuture.runAsync(() -> {
@@ -215,17 +215,4 @@ public class ChatService {
             username, chatMessage.getSender(), chatMessage.getMessage(),
             chatListView, curOpenChat, encryptionAlgorithms);
   }
-
-//  public void loadChatsList(VBox chatsList, String username, Label messageLabel) {
-//    chatsList.getChildren().clear();
-//
-//    try (Stream<Path> paths = Files.list(Path.of(chatDirectory + username))) {
-//      paths.filter(Files::isRegularFile)
-//              .filter(p -> p.getFileName().toString().endsWith("_chat.txt"))
-//              .forEach(this::addChatButton);
-//    } catch (IOException e) {
-//      log.error("Ошибка при загрузке списка чатов", e);
-//      showError(messageLabel, "Ошибка загрузки списка чатов: " + e.getMessage());
-//    }
-//  }
 }

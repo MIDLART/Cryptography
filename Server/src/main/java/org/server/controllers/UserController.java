@@ -27,11 +27,11 @@ public class UserController {
 
   @PostMapping("/send-message")
   public ResponseEntity<String> sendMessage(@RequestBody MessageRequest request) {
-    String message = request.getMessage();
+    byte[] message = request.getMessage();
     String username = request.getSender();
     String recipient = request.getRecipient();
 
-    if (message == null || message.trim().isEmpty()) {
+    if (message == null) {
       return ResponseEntity.badRequest().body("Сообщение не может быть пустым");
     }
 
@@ -47,7 +47,7 @@ public class UserController {
       return ResponseEntity.badRequest().body("Пользователь не найден");
     }
 
-    log.info("Сообщение от {} для {}: {}", username, recipient, Arrays.toString(message.getBytes()));
+    log.info("Сообщение от {} для {}: {}", username, recipient, Arrays.toString(message));
 
     messageConsumer.createQueue(recipient);
 

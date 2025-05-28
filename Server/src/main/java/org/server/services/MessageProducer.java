@@ -18,7 +18,7 @@ public class MessageProducer {
   private final AmqpTemplate rabbitTemplate;
   private final ObjectMapper objectMapper;
 
-  public void sendMessage(String sender, String recipient, String message) {
+  public void sendMessage(String sender, String recipient, byte[] message) {
     String queueName = RabbitMQConfig.QUEUE_PREFIX + recipient;
 
     try {

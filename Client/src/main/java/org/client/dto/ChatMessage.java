@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ChatMessage {
   private String sender;
-  private String message;
+  private byte[] message;
 }

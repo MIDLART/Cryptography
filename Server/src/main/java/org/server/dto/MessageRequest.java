@@ -10,5 +10,5 @@ import lombok.NoArgsConstructor;
 public class MessageRequest {
   private String sender;
   private String recipient;
-  private String message;
+  private byte[] message;
 }
