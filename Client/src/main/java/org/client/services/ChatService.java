@@ -5,6 +5,11 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.client.crypto.SymmetricAlgorithm;
@@ -12,9 +17,10 @@ import org.client.crypto.async.CancellableCompletableFuture;
 import org.client.crypto.enums.EncryptionMode;
 import org.client.crypto.enums.PackingMode;
 import org.client.crypto.rc5.RC5;
+import org.client.dto.ChatFileMessage;
 import org.client.dto.ChatMessage;
+import org.client.enums.MessageType;
 import org.client.models.Message;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -32,6 +39,9 @@ import java.util.concurrent.ExecutionException;
 public class ChatService {
   public static final String CHAT_DIR = "Client/src/main/resources/org/client/chats/";
   private final ObjectMapper mapper = new ObjectMapper();
+
+  private final FileService fileService = new FileService();
+  private final Map<UUID, Integer> filesProgress = new HashMap<>();
 
   private final EncryptionMode encryptionMode;
   private final PackingMode packingMode;
@@ -77,7 +87,6 @@ public class ChatService {
 
         if(!encryptionAlgorithms.containsKey(chatName)) {
           byte[] key = lines.getFirst().getBytes(StandardCharsets.UTF_8);
-
           var algorithm = new SymmetricAlgorithm(
                   new RC5(key, 16), encryptionMode, packingMode, initVector);
           encryptionAlgorithms.put(chatName, algorithm);
@@ -88,29 +97,33 @@ public class ChatService {
         for (int i = 1; i < lines.size(); i++) {
           String line = lines.get(i);
           if (line.startsWith("@me@")) {
-            messages.add(new Message(line.substring(4), true));
+            messages.add(new Message(line.substring(4), MessageType.MY_MESSAGE));
           } else if (line.startsWith("@il@")) {
-            messages.add(new Message(line.substring(4), false));
+            messages.add(new Message(line.substring(4), MessageType.INTERLOCUTOR_MESSAGE));
+          } else if (line.startsWith("@mi@") || line.startsWith("@ii@")) {
+            boolean isMe = line.startsWith("@mi@");
+            Path filePath = Paths.get(line.substring(4));
+            if (Files.exists(filePath)) {
+              messages.add(new Message(
+                      isMe ? MessageType.MY_IMAGE : MessageType.INTERLOCUTOR_IMAGE,
+                      filePath)
+              );
+            }
+          } else if (line.startsWith("@mf@") || line.startsWith("@if@")) {
+            boolean isMe = line.startsWith("@mf@");
+            Path filePath = Paths.get(line.substring(4));
+            if (Files.exists(filePath)) {
+              messages.add(new Message(
+                      isMe ? MessageType.MY_FILE : MessageType.INTERLOCUTOR_FILE,
+                      filePath)
+              );
+            }
           }
         }
 
         Platform.runLater(() -> {
           chatListView.setItems(messages);
-          chatListView.setCellFactory(lv -> new ListCell<Message>() {
-            @Override
-            protected void updateItem(Message msg, boolean empty) {
-              super.updateItem(msg, empty);
-              if (empty || msg == null) {
-                setText(null);
-                setGraphic(null);
-                getStyleClass().clear();
-              } else {
-                setText(msg.getText());
-                getStyleClass().clear();
-                getStyleClass().add(msg.isMe() ? "message-right" : "message-left");
-              }
-            }
-          });
+          chatListView.setCellFactory(lv -> new MessageCell());
         });
       }
     } catch (IOException e) {
@@ -121,11 +134,80 @@ public class ChatService {
     return chatFile;
   }
 
-  public void writeMessage(Path chatFile, boolean isMe, String message, ListView<Message> chatListView, Path curOpenChat) throws IOException {
+  public class MessageCell extends ListCell<Message> {
+    @Override
+    protected void updateItem(Message msg, boolean empty) {
+      super.updateItem(msg, empty);
+
+      if (empty || msg == null) {
+        setText(null);
+        setGraphic(null);
+        getStyleClass().clear();
+        return;
+      }
+
+      getStyleClass().clear();
+      getStyleClass().add(msg.isMe() ? "message-right" : "message-left");
+
+      if (msg.isImage()) {
+        try {
+          Image image = new Image(msg.getFilePath().toUri().toString());
+          ImageView imageView = new ImageView(image);
+          imageView.setFitWidth(200);
+          imageView.setPreserveRatio(true);
+          setGraphic(imageView);
+          setText(null);
+        } catch (Exception e) {
+          setText("[Ошибка загрузки изображения]");
+          setGraphic(null);
+        }
+      } else if (msg.isFile()) {
+        HBox container = new HBox(5);
+        Label fileLabel = new Label(msg.getFilePath().getFileName().toString());
+        Button downloadBtn = new Button("Открыть");
+        downloadBtn.getStyleClass().add("download-button");
+
+        downloadBtn.setOnAction(e -> {
+          try {
+            ProcessBuilder pb;
+            String os = System.getProperty("os.name").toLowerCase();
+
+            String filePath = msg.getFilePath().toFile().getAbsolutePath();
+
+            if (os.contains("win")) {
+              pb = new ProcessBuilder("cmd", "/c", "start", "\"DummyTitle\"", filePath);
+            } else if (os.contains("mac")) {
+              pb = new ProcessBuilder("open", filePath);
+            } else if (os.contains("nix") || os.contains("nux")) {
+              pb = new ProcessBuilder("xdg-open", filePath);
+            } else {
+              log.warn("Unsupported operating system.  Cannot open file.");
+              return;
+            }
+
+            pb.start();
+          } catch (IOException ex) {
+            log.error("Download failed", ex);
+          }
+        });
+
+        container.getChildren().addAll(fileLabel, downloadBtn);
+        setGraphic(container);
+        setText(null);
+      } else {
+        setText(msg.getText());
+        setGraphic(null);
+      }
+    }
+  }
+
+  public void writeMessage(Path chatFile, MessageType type, String message, Path filePath,
+                           ListView<Message> chatListView, Path curOpenChat) throws IOException {
+
     if (chatFile != null && Files.exists(chatFile)) {
       message += "\n";
 
-      Message newMessage = new Message(message, isMe);
+      Message newMessage = new Message(message, type, filePath);
 
       if (chatFile.equals(curOpenChat)) {
         Platform.runLater(() -> {
@@ -134,12 +216,7 @@ public class ChatService {
         });
       }
 
-      String messageWithSender;
-      if (isMe) {
-        messageWithSender = "@me@" + message;
-      } else {
-        messageWithSender = "@il@" + message;
-      }
+      String messageWithSender = addPrefix(type, message);
 
       synchronized (FILE_LOCK) {
         Files.writeString(
@@ -151,7 +228,7 @@ public class ChatService {
   }
 
   public void meWriteMessage(Path chatFile, String message, ListView<Message> chatListView, Path curOpenChat) throws IOException {
-    writeMessage(chatFile, true, message, chatListView, curOpenChat);
+    writeMessage(chatFile, MessageType.MY_MESSAGE, message, null, chatListView, curOpenChat);
   }
 
   public void interlocutorWriteMessage(String username, String chatName, byte[] message,
@@ -160,22 +237,7 @@ public class ChatService {
 
     Path chatFile = getChatFilePath(username, chatName);
 
-    SymmetricAlgorithm algorithm;
-    if(!encryptionAlgorithms.containsKey(chatName)) {
-      byte[] key;
-      synchronized (FILE_LOCK) {
-        try (Scanner scanner = new Scanner(chatFile)) {
-          String firstLine = scanner.nextLine();
-          key = firstLine.getBytes(StandardCharsets.UTF_8);
-        }
-      }
-
-      algorithm = new SymmetricAlgorithm(
-              new RC5(key, 16), encryptionMode, packingMode, initVector);
-      encryptionAlgorithms.put(chatName, algorithm);
-    } else {
-      algorithm = encryptionAlgorithms.get(chatName);
-    }
+    SymmetricAlgorithm algorithm = getAlgorithm(chatName, chatFile, encryptionAlgorithms);
 
     CancellableCompletableFuture<byte[]> decryptFuture = algorithm.decryptAsync(message);
 
@@ -189,9 +251,9 @@ public class ChatService {
     }
 
     writeMessage(
-            chatFile, false,
+            chatFile, MessageType.INTERLOCUTOR_MESSAGE,
             (new String(decryptedMessage, StandardCharsets.UTF_8)),
-            chatListView, curOpenChat);
+            null, chatListView, curOpenChat);
   }
 
   public CompletableFuture<Void> interlocutorWriteMessageAsync(String username, String chatName, byte[] message,
@@ -214,5 +276,101 @@ public class ChatService {
     interlocutorWriteMessageAsync(
             username, chatMessage.getSender(), chatMessage.getMessage(),
             chatListView, curOpenChat, encryptionAlgorithms);
+  }
+
+  public void meWriteFile(Path chatFile, ListView<Message> chatListView, Path curOpenChat, Path filePath) throws IOException {
+    writeMessage(chatFile, MessageType.MY_FILE, filePath.toString(), filePath, chatListView, curOpenChat);
+  }
+
+  public void interlocutorWriteFileMessage(String username, String chatName, UUID fileId,
+                                           byte[] fileName, byte[] fileContent, int chunkNumber, int totalChunks,
+                                           ListView<Message> chatListView, Path curOpenChat,
+                                           Map<String, SymmetricAlgorithm> encryptionAlgorithms) throws IOException {
+
+    Path chatFile = getChatFilePath(username, chatName);
+
+    SymmetricAlgorithm algorithm = getAlgorithm(chatName, chatFile, encryptionAlgorithms);
+
+    CancellableCompletableFuture<byte[]> decryptFuture = algorithm.decryptAsync(fileName);
+    CancellableCompletableFuture<byte[]> decryptContentFuture = algorithm.decryptAsync(fileContent);
+
+    byte[] decryptedFileName;
+    byte[] decryptedChunk;
+    try {
+      decryptedFileName = decryptFuture.get();
+      decryptedChunk = decryptContentFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Encryption thread interrupted", e);
+      return;
+    }
+
+    Path tmpFile = fileService.chunkRec(username, chatName, decryptedChunk, chunkNumber, fileId);
+    filesProgress.merge(fileId, 1, (oldValue, value) -> oldValue + 1);
+
+    if (filesProgress.get(fileId) == totalChunks) {
+      Path finalFile = fileService.renameFile(tmpFile, (new String(decryptedFileName, StandardCharsets.UTF_8)));
+
+      writeMessage(chatFile, MessageType.INTERLOCUTOR_FILE, finalFile.toString(), finalFile, chatListView, curOpenChat);
+
+      filesProgress.remove(fileId);
+    }
+  }
+
+  public CompletableFuture<Void> interlocutorWriteFileMessageAsync(String username, String chatName, UUID fileId,
+                                           byte[] fileName, byte[] fileContent, int chunkNumber, int totalChunks,
+                                           ListView<Message> chatListView, Path curOpenChat,
+                                           Map<String, SymmetricAlgorithm> encryptionAlgorithms) {
+
+    return CompletableFuture.runAsync(() -> {
+      try {
+        interlocutorWriteFileMessage(username, chatName, fileId, fileName, fileContent,
+                chunkNumber, totalChunks, chatListView, curOpenChat, encryptionAlgorithms);
+      } catch (IOException e) {
+        log.error("Interlocutor write file error {}", e.getMessage());
+      }
+    });
+  }
+
+  public void interlocutorParseAndWriteFileMessage(String username, String jsonMessage, ListView<Message> chatListView,
+                                                   Path curOpenChat, Map<String, SymmetricAlgorithm> encryptionAlgorithms) throws IOException {
+    ChatFileMessage chatMessage = mapper.readValue(jsonMessage, ChatFileMessage.class);
+
+    interlocutorWriteFileMessageAsync(
+            username, chatMessage.getSender(), chatMessage.getFileId(), chatMessage.getFileName(),
+            chatMessage.getFileContent(), chatMessage.getChunkNumber(), chatMessage.getTotalChunks(),
+            chatListView, curOpenChat, encryptionAlgorithms);
+  }
+
+  private SymmetricAlgorithm getAlgorithm(String chatName, Path chatFile,
+                                          Map<String, SymmetricAlgorithm> encryptionAlgorithms) throws IOException {
+    SymmetricAlgorithm algorithm;
+    if(!encryptionAlgorithms.containsKey(chatName)) {
+      byte[] key;
+      synchronized (FILE_LOCK) {
+        try (Scanner scanner = new Scanner(chatFile)) {
+          String firstLine = scanner.nextLine();
+          key = firstLine.getBytes(StandardCharsets.UTF_8);
+        }
+      }
+
+      algorithm = new SymmetricAlgorithm(
+              new RC5(key, 16), encryptionMode, packingMode, initVector);
+      encryptionAlgorithms.put(chatName, algorithm);
+    } else {
+      algorithm = encryptionAlgorithms.get(chatName);
+    }
+
+    return algorithm;
+  }
+
+  private String addPrefix(MessageType type, String message) {
+    return switch (type) {
+      case MY_MESSAGE -> "@me@" + message;
+      case INTERLOCUTOR_MESSAGE -> "@il@" + message;
+      case MY_FILE -> "@mf@" + message;
+      case INTERLOCUTOR_FILE -> "@if@" + message;
+      case MY_IMAGE -> "@mi@" + message;
+      case INTERLOCUTOR_IMAGE -> "@ii@" + message;
+    };
   }
 }

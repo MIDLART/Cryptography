@@ -55,6 +55,38 @@ public class UserController {
     return ResponseEntity.ok("Сообщение отправлено в очередь");
   }
 
+  @PostMapping("/send-file-message")
+  public ResponseEntity<String> sendFileMessage(@RequestBody FileMessageRequest request) {
+    String username = request.getSender();
+    String recipient = request.getRecipient();
+    byte[] fileName = request.getFileName();
+
+    if (username == null || username.trim().isEmpty()) {
+      return ResponseEntity.badRequest().body("Не указан отправитель");
+    }
+
+    if (recipient == null || recipient.trim().isEmpty()) {
+      return ResponseEntity.badRequest().body("Не указан получатель");
+    }
+
+    if (fileName == null) {
+      return ResponseEntity.badRequest().body("Название файла не может быть пустым");
+    }
+
+    if (!userService.findUser(recipient)) {
+      return ResponseEntity.badRequest().body("Пользователь не найден");
+    }
+
+    log.info("Файл от {} для {}: {} [{}/{}]", username, recipient, Arrays.toString(fileName),
+            request.getChunkNumber(), request.getTotalChunks());
+
+    messageConsumer.createQueue(recipient);
+
+    messageProducer.sendFileMessage(username, recipient, fileName,
+            request.getFileContent(), request.getChunkNumber(), request.getTotalChunks(), request.getFileId());
+    return ResponseEntity.ok("Сообщение отправлено в очередь");
+  }
+
   @GetMapping("/load-message")
   public ResponseEntity<List<QueueMessage>> loadMessage(@RequestParam("username") String username) {
     List<QueueMessage> messages = messageConsumer.getAllMessagesFromQueue(username);

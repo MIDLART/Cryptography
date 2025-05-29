@@ -44,6 +44,8 @@
         <HBox fx:id="messageControls" alignment="CENTER" spacing="5" visible="false">
             <TextField fx:id="messageField" promptText="Введите сообщение"/>
             <Button text="Отправить" onAction="#sendMessage"/>
+            <Button text="📎" onAction="#attachFile"/>
+            <Label fx:id="fileLabel"/>
         </HBox>
 
         <Label fx:id="messageLabel"/>

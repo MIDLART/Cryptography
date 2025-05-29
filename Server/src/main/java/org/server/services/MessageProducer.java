@@ -5,11 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.server.configurations.RabbitMQConfig;
+import org.server.dto.ChatFileMessage;
 import org.server.dto.ChatMessage;
 import org.server.dto.Invitation;
 import org.server.dto.QueueMessage;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -32,6 +35,25 @@ public class MessageProducer {
 
     log.info("Отправлено в очередь '{}' | От: {} | Для: {} | Сообщение: {}",
             queueName, sender, recipient, message);
+  }
+
+  public void sendFileMessage(String sender, String recipient, byte[] fileName,
+                              byte[] fileContent, int chunkNumber, int totalChunks, UUID fileId) {
+
+    String queueName = RabbitMQConfig.QUEUE_PREFIX + recipient;
+
+    try {
+      String jsonMessage = objectMapper.writeValueAsString(
+              new ChatFileMessage(sender, fileId, fileName, fileContent, chunkNumber, totalChunks));
+      String queueMessage = objectMapper.writeValueAsString(new QueueMessage("ChatFileMessage", jsonMessage));
+
+      rabbitTemplate.convertAndSend(queueName, queueMessage);
+    } catch (JsonProcessingException e) {
+      log.error("Parsing error {}", e.getMessage());
+    }
+
+    log.info("Отправлено в очередь '{}' | От: {} | Для: {} | Фвйл: {} [{}/{}]",
+            queueName, sender, recipient, fileName, chunkNumber, totalChunks);
   }
 
   public void sendInvitation(String recipient, Invitation invitation) {

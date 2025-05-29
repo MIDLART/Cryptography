@@ -18,9 +18,11 @@ import org.client.crypto.enums.PackingMode;
 import org.client.dto.*;
 import org.client.models.Message;
 import org.client.services.ChatService;
+import org.client.services.FileService;
 import org.client.services.MessageService;
 import org.springframework.stereotype.Controller;
 
+import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
@@ -55,26 +57,28 @@ public class UserController {
 
   private final MessageService messageService = new MessageService();
   private final ChatService chatService = new ChatService(encryptionMode, packingMode, initVector);
+  private final FileService fileService = new FileService();
   private final InvitationController invitationController = new InvitationController();
+
   private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
   private ScheduledFuture<?> updateTask;
 
   @Setter @Getter private String authToken;
   @Setter @Getter private String username;
+  @Setter @Getter private String recipientName;
 
   @FXML private Button button;
   @FXML private Hyperlink authLink;
 
   @FXML private TextField messageField;
-
   @FXML private Label messageLabel;
+  @FXML private Label fileLabel;
+  private File curAttachedFile = null;
 
   private Path chatFile;
   @FXML private ListView<Message> chatListView;
   @FXML private VBox chatsList;
   @FXML private HBox messageControls;
-
-  @Setter @Getter private String recipientName;
 
 
   public void initialize() {
@@ -216,6 +220,8 @@ public class UserController {
 
       if (type.equals("ChatMessage")) {
         chatService.interlocutorParseAndWriteMessage(username, text, chatListView, chatFile, encryptionAlgorithms);
+      } else if (type.equals("ChatFileMessage")) {
+        chatService.interlocutorParseAndWriteFileMessage(username, text, chatListView, chatFile, encryptionAlgorithms);
       } else if (type.equals("Invitation")) {
         InvitationController.InvitationStatus status = invitationController
                 .processInvitation(username, text, authToken, messageLabel);
@@ -245,7 +251,7 @@ public class UserController {
   }
 
   @FXML
-  private void sendMessage() throws JsonProcessingException {
+  private void sendMessage() {
     clearLabel(messageLabel);
 
     if (!messageControls.isVisible()) {
@@ -260,19 +266,29 @@ public class UserController {
       return;
     }
 
-    if (message == null || message.trim().isEmpty()) {
-      return;
-    }
-
     if (authToken == null || authToken.isEmpty()) {
       log.error("Токен не установлен!");
       return;
     }
 
-    messageService.sendAsync(username, recipient, message, encryptionAlgorithms,
-            authToken, chatFile, chatListView, messageLabel, chatService);
+    if (message != null && !message.trim().isEmpty()) {
+      messageService.sendAsync(username, recipient, message, encryptionAlgorithms,
+              authToken, chatFile, chatListView, messageLabel, chatService);
+    }
 
+    if (curAttachedFile != null) {
+      messageService.sendFileAsync(username, recipient, curAttachedFile, encryptionAlgorithms,
+              authToken, chatFile, chatListView, messageLabel, chatService);
+    }
+
+    curAttachedFile = null;
+    clearLabel(fileLabel);
     messageField.clear();
+  }
+
+  @FXML
+  public void attachFile() {
+    curAttachedFile = fileService.attachFile(fileLabel);
   }
 
   private void addConfirmationButton(String sender, BigInteger B) {
