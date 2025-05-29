@@ -20,3 +20,15 @@
     -fx-max-width: 300px;
     -fx-wrap-text: true;
 }
+
+.progress-bar {
+    -fx-accent: #4CAF50;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.progress-bar > .bar {
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+    -fx-padding: 0;
+}

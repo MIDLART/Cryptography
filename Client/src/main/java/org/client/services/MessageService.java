@@ -1,6 +1,8 @@
 package org.client.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import lombok.extern.log4j.Log4j2;
@@ -27,6 +29,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static java.lang.Thread.sleep;
 import static org.client.services.CommonService.showError;
 
 @Log4j2
@@ -96,6 +99,22 @@ public class MessageService {
                        ListView<Message> chatListView, Label messageLabel, ChatService chatService) {
 
     String fileName = file.getName();
+    IntegerProperty progress = new SimpleIntegerProperty(0);
+
+    Path filePath = fileService.saveFile(username, recipient, file);
+    if (filePath != null) {
+      try {
+        if (fileService.isImage(fileName)) {
+          chatService.meWriteImage(chatFile, chatListView, chatFile, filePath, progress);
+        } else {
+          chatService.meWriteFile(chatFile, chatListView, chatFile, filePath, progress);
+        }
+      } catch (IOException e) {
+        log.error("File writing error", e);
+        showError(messageLabel, "Ошибка записи файла");
+      }
+    }
+
     byte[] encryptedName;
     try {
       encryptedName = takeEncryptedMessage(recipient, fileName.getBytes(), symmetricEncryption);
@@ -116,9 +135,17 @@ public class MessageService {
 
     File encryptedFile = new File(encryptedFileName);
 
-    log.info("file name: {}", fileName);
     CancellableCompletableFuture<Void> encryptFuture =
             symmetricEncryption.get(recipient).encryptAsync(file.toString(), encryptedFileName);
+
+    try {
+      while (!encryptFuture.isDone()) {
+        sleep(100);
+        progress.set((int) encryptFuture.getProgress());
+      }
+    } catch (InterruptedException e) {
+      log.error("Encryption thread interrupted", e);
+    }
 
     try {
       encryptFuture.get();
@@ -129,6 +156,7 @@ public class MessageService {
     }
 
     byte[] buffer = new byte[CHUNK_SIZE];
+    progress.set(0);
 
     try (InputStream fileInputStream = new FileInputStream(encryptedFile)) {
       int bytesRead;
@@ -150,6 +178,7 @@ public class MessageService {
         }
 
         chunkNumber++;
+        progress.set((int) (((double) chunkNumber / totalChunks) * 100));
       }
     } catch (IOException e) {
       log.error("File reading error", e);
@@ -161,20 +190,6 @@ public class MessageService {
       Files.delete(encryptedFile.toPath());
     } catch (IOException e) {
       log.error("File deletion error", e);
-    }
-
-    Path filePath = fileService.saveFile(username, recipient, file);
-    if (filePath != null) {
-      try {
-        if (fileService.isImage(fileName)) {
-          chatService.meWriteImage(chatFile, chatListView, chatFile, filePath);
-        } else {
-          chatService.meWriteFile(chatFile, chatListView, chatFile, filePath);
-        }
-      } catch (IOException e) {
-        log.error("File writing error", e);
-        showError(messageLabel, "Ошибка записи файла");
-      }
     }
   }
 
