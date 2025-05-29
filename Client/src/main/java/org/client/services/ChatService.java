@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -163,6 +164,8 @@ public class ChatService {
         }
       } else if (msg.isFile()) {
         HBox container = new HBox(5);
+        container.setAlignment(msg.isMe() ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+
         Label fileLabel = new Label(msg.getFilePath().getFileName().toString());
         Button downloadBtn = new Button("Открыть");
         downloadBtn.getStyleClass().add("download-button");
@@ -282,6 +285,10 @@ public class ChatService {
     writeMessage(chatFile, MessageType.MY_FILE, filePath.toString(), filePath, chatListView, curOpenChat);
   }
 
+  public void meWriteImage(Path chatFile, ListView<Message> chatListView, Path curOpenChat, Path filePath) throws IOException {
+    writeMessage(chatFile, MessageType.MY_IMAGE, filePath.toString(), filePath, chatListView, curOpenChat);
+  }
+
   public void interlocutorWriteFileMessage(String username, String chatName, UUID fileId,
                                            byte[] fileName, byte[] fileContent, int chunkNumber, int totalChunks,
                                            ListView<Message> chatListView, Path curOpenChat,
@@ -310,7 +317,11 @@ public class ChatService {
     if (filesProgress.get(fileId) == totalChunks) {
       Path finalFile = fileService.renameFile(tmpFile, (new String(decryptedFileName, StandardCharsets.UTF_8)));
 
-      writeMessage(chatFile, MessageType.INTERLOCUTOR_FILE, finalFile.toString(), finalFile, chatListView, curOpenChat);
+      if(fileService.isImage(finalFile.toString())) {
+        writeMessage(chatFile, MessageType.INTERLOCUTOR_IMAGE, finalFile.toString(), finalFile, chatListView, curOpenChat);
+      } else {
+        writeMessage(chatFile, MessageType.INTERLOCUTOR_FILE, finalFile.toString(), finalFile, chatListView, curOpenChat);
+      }
 
       filesProgress.remove(fileId);
     }

@@ -12,7 +12,9 @@
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.ListView?>
 <?import java.net.URL?>
-<SplitPane dividerPositions="0.3" xmlns:fx="http://javafx.com/fxml"
+
+<SplitPane dividerPositions="0.2" prefWidth="700" prefHeight="600"
+           xmlns:fx="http://javafx.com/fxml"
            fx:controller="org.client.controllers.UserController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>

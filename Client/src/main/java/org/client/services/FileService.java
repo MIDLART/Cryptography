@@ -140,4 +140,12 @@ public class FileService {
       throw new IOException("Не удалось переименовать файл: " + e.getMessage(), e);
     }
   }
+
+  public boolean isImage(String fileName) {
+    String extension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+
+    return extension.equals(".jpg") || extension.equals(".jpeg") ||
+           extension.equals(".png") || extension.equals(".gif") ||
+           extension.equals(".bmp") || extension.equals(".webp");
+  }
 }

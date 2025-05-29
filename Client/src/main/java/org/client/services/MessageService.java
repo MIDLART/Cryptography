@@ -138,10 +138,12 @@ public class MessageService {
 
     Path filePath = fileService.saveFile(username, recipient, file);
     if (filePath != null) {
-      String extension = fileName.substring(fileName.lastIndexOf('.'));
-
       try {
-        chatService.meWriteFile(chatFile, chatListView, chatFile, filePath);
+        if (fileService.isImage(fileName)) {
+          chatService.meWriteImage(chatFile, chatListView, chatFile, filePath);
+        } else {
+          chatService.meWriteFile(chatFile, chatListView, chatFile, filePath);
+        }
       } catch (IOException e) {
         log.error("File writing error", e);
         showError(messageLabel, "Ошибка записи файла");
