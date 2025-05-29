@@ -299,23 +299,32 @@ public class ChatService {
     SymmetricAlgorithm algorithm = getAlgorithm(chatName, chatFile, encryptionAlgorithms);
 
     CancellableCompletableFuture<byte[]> decryptFuture = algorithm.decryptAsync(fileName);
-    CancellableCompletableFuture<byte[]> decryptContentFuture = algorithm.decryptAsync(fileContent);
 
     byte[] decryptedFileName;
-    byte[] decryptedChunk;
     try {
       decryptedFileName = decryptFuture.get();
-      decryptedChunk = decryptContentFuture.get();
     } catch (InterruptedException | ExecutionException e) {
       log.error("Encryption thread interrupted", e);
       return;
     }
 
-    Path tmpFile = fileService.chunkRec(username, chatName, decryptedChunk, chunkNumber, fileId);
+    Path tmpFile = fileService.chunkRec(username, chatName, fileContent, chunkNumber, fileId);
     filesProgress.merge(fileId, 1, (oldValue, value) -> oldValue + 1);
 
     if (filesProgress.get(fileId) == totalChunks) {
-      Path finalFile = fileService.renameFile(tmpFile, (new String(decryptedFileName, StandardCharsets.UTF_8)));
+      Path finalFile = fileService.createFile(
+              username, chatName, (new String(decryptedFileName, StandardCharsets.UTF_8)));
+
+      CancellableCompletableFuture<Void> decryptContentFuture =
+              algorithm.decryptAsync(tmpFile.toString(), finalFile.toString());
+      try {
+        decryptContentFuture.get();
+      } catch (InterruptedException | ExecutionException e) {
+        log.error("Encryption thread interrupted", e);
+        return;
+      }
+
+      Files.deleteIfExists(tmpFile);
 
       if(fileService.isImage(finalFile.toString())) {
         writeMessage(chatFile, MessageType.INTERLOCUTOR_IMAGE, finalFile.toString(), finalFile, chatListView, curOpenChat);

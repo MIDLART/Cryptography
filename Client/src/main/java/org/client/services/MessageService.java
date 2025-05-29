@@ -19,6 +19,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Map;
@@ -104,17 +105,39 @@ public class MessageService {
       return;
     }
 
-    byte[] buffer = new byte[CHUNK_SIZE];
     UUID id = UUID.randomUUID();
+    String encryptedFileName;
+    try {
+      encryptedFileName = fileService.getFileDirectoryPath(username, recipient).toString() + "/" + id;
+    } catch (IOException e) {
+      log.error("Encrypted file name error", e);
+      return;
+    }
 
-    try (InputStream fileInputStream = new FileInputStream(file)) {
+    File encryptedFile = new File(encryptedFileName);
+
+    log.info("file name: {}", fileName);
+    CancellableCompletableFuture<Void> encryptFuture =
+            symmetricEncryption.get(recipient).encryptAsync(file.toString(), encryptedFileName);
+
+    try {
+      encryptFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      log.error("Encryption thread interrupted", e);
+      showError(messageLabel, "Ошибка шифрования файла");
+      return;
+    }
+
+    byte[] buffer = new byte[CHUNK_SIZE];
+
+    try (InputStream fileInputStream = new FileInputStream(encryptedFile)) {
       int bytesRead;
       int chunkNumber = 1;
-      int totalChunks = (int) Math.ceil((double) file.length() / CHUNK_SIZE);
+      int totalChunks = (int) Math.ceil((double) encryptedFile.length() / CHUNK_SIZE);
 
       while ((bytesRead = fileInputStream.read(buffer)) != -1) {
-        String jsonRequest = chunkRequest(username, recipient, buffer, bytesRead, symmetricEncryption, encryptedName,
-                                          messageLabel, chatService, chunkNumber, totalChunks, id);
+        String jsonRequest = chunkRequest(username, recipient, buffer, encryptedName, bytesRead,
+                                          chatService, chunkNumber, totalChunks, id);
         if (jsonRequest == null) {
           return;
         }
@@ -127,13 +150,17 @@ public class MessageService {
         }
 
         chunkNumber++;
-
-        // Обновляем прогресс
       }
     } catch (IOException e) {
       log.error("File reading error", e);
       showError(messageLabel, "Ошибка чтения файла");
       return;
+    }
+
+    try {
+      Files.delete(encryptedFile.toPath());
+    } catch (IOException e) {
+      log.error("File deletion error", e);
     }
 
     Path filePath = fileService.saveFile(username, recipient, file);
@@ -181,23 +208,13 @@ public class MessageService {
     return encryptFuture.get();
   }
 
-  private String chunkRequest(String username, String recipient, byte[] buffer, int bytesRead,
-                              Map<String, SymmetricAlgorithm> symmetricEncryption, byte[] encryptedName,
-                              Label messageLabel, ChatService chatService, int chunkNumber, int totalChunks, UUID id) {
+  private String chunkRequest(String username, String recipient, byte[] buffer, byte[] encryptedName,
+                              int bytesRead, ChatService chatService, int chunkNumber, int totalChunks, UUID id) {
 
     byte[] chunkData = bytesRead == CHUNK_SIZE ? buffer : Arrays.copyOf(buffer, bytesRead);
 
-    byte[] encryptedChunk;
-    try {
-      encryptedChunk = takeEncryptedMessage(recipient, chunkData, symmetricEncryption);
-    } catch (InterruptedException | ExecutionException e) {
-      log.error("Encryption thread interrupted", e);
-      showError(messageLabel, "Ошибка шифрования файла (часть " + (chunkNumber) + ")");
-      return null;
-    }
-
     FileMessageRequest chunkRequest = new FileMessageRequest(
-            username, recipient, id, encryptedName, encryptedChunk, chunkNumber, totalChunks);
+            username, recipient, id, encryptedName, chunkData, chunkNumber, totalChunks);
 
     String jsonRequest;
     try {

@@ -255,9 +255,8 @@ public class SymmetricAlgorithm {
   }
 
   private void fileErrorCheck(String inputFile, String outputFile) {
-    if (inputFile == null || inputFile.isEmpty() ||
-            !(new File(inputFile).exists())) {
-      throw new RuntimeException("Input file not found");
+    if (inputFile == null || inputFile.isEmpty() || !(new File(inputFile).exists())) {
+      throw new RuntimeException("Input file not found ");
     }
 
     if (outputFile == null || outputFile.isEmpty()) {

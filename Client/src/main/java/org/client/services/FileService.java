@@ -7,9 +7,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
@@ -109,6 +107,35 @@ public class FileService {
       log.error("Error saving chunk {} for file {} at offset {}",
               chunkNumber, fileId.toString(), (long) (chunkNumber - 1) * CHUNK_SIZE, e);
       return null;
+    }
+
+    return filePath;
+  }
+
+  public Path createFile(String username, String recipient, String fileName) {
+    Path userFileDir;
+    try {
+      userFileDir = getFileDirectoryPath(username, recipient);
+    } catch (IOException e) {
+      log.error("Directory creation error", e);
+      return null;
+    }
+
+    Path filePath = userFileDir.resolve(fileName);
+
+    int counter = 1;
+    while (Files.exists(filePath)) {
+      String baseName = fileName.substring(0, fileName.lastIndexOf('.'));
+      String extension = fileName.substring(fileName.lastIndexOf('.'));
+      String newFileName = baseName + "_" + counter + extension;
+      filePath = userFileDir.resolve(newFileName);
+      counter++;
+    }
+
+    try {
+      Files.createFile(filePath);
+    } catch (IOException e) {
+      log.error("Failed to create file", e);
     }
 
     return filePath;
