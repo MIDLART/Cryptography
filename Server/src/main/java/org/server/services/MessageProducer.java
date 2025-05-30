@@ -5,10 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.server.configurations.RabbitMQConfig;
-import org.server.dto.ChatFileMessage;
-import org.server.dto.ChatMessage;
-import org.server.dto.Invitation;
-import org.server.dto.QueueMessage;
+import org.server.dto.*;
+import org.server.models.ChatSettings;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.stereotype.Service;
 
@@ -56,11 +54,15 @@ public class MessageProducer {
             queueName, sender, recipient, fileName, chunkNumber, totalChunks);
   }
 
-  public void sendInvitation(String recipient, Invitation invitation) {
+  public void sendInvitation(InvitationRequest request) {
+    Invitation invitation = request.getInvitation();
+    ChatSettings chatSettings = request.getChatSettings();
+    String recipient = chatSettings.getRecipient();
+
     String queueName = RabbitMQConfig.QUEUE_PREFIX + recipient;
 
     try {
-      String jsonMessage = objectMapper.writeValueAsString(invitation);
+      String jsonMessage = objectMapper.writeValueAsString(request);
       String queueMessage = objectMapper.writeValueAsString(new QueueMessage("Invitation", jsonMessage));
 
       rabbitTemplate.convertAndSend(queueName, queueMessage);

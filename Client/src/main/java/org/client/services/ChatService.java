@@ -20,9 +20,11 @@ import org.client.crypto.SymmetricAlgorithm;
 import org.client.crypto.async.CancellableCompletableFuture;
 import org.client.crypto.enums.EncryptionMode;
 import org.client.crypto.enums.PackingMode;
+import org.client.crypto.loki97.LOKI97;
 import org.client.crypto.rc5.RC5;
 import org.client.dto.ChatFileMessage;
 import org.client.dto.ChatMessage;
+import org.client.enums.Algorithm;
 import org.client.enums.MessageType;
 import org.client.models.Message;
 
@@ -38,6 +40,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static java.lang.Thread.sleep;
+import static org.client.crypto.loki97.boxes.Sboxes.initS1;
+import static org.client.crypto.loki97.boxes.Sboxes.initS2;
 import static org.client.services.KeyService.getConfigFilePath;
 
 @Getter
@@ -50,15 +54,11 @@ public class ChatService {
   private final FileService fileService = new FileService();
   private final Map<UUID, Integer> filesProgress = new HashMap<>();
 
-  private final EncryptionMode encryptionMode;
-  private final PackingMode packingMode;
   private final byte[] initVector;
 
   private static final Object FILE_LOCK = new Object();
 
-  public ChatService(EncryptionMode encryptionMode, PackingMode packingMode, byte[] initVector) {
-    this.encryptionMode = encryptionMode;
-    this.packingMode = packingMode;
+  public ChatService(byte[] initVector) {
     this.initVector = initVector;
   }
 
@@ -102,15 +102,7 @@ public class ChatService {
           lines = Files.readAllLines(chatFile);
         }
 
-        if(!encryptionAlgorithms.containsKey(chatName)) {
-          Map<String, Object> data = mapper.readValue(getConfigFilePath(username, chatName).toFile(), Map.class);
-
-          byte[] key = Base64.getDecoder().decode(data.get("key").toString());
-
-          var algorithm = new SymmetricAlgorithm(
-                  new RC5(key, 16), encryptionMode, packingMode, initVector);
-          encryptionAlgorithms.put(chatName, algorithm);
-        }
+        getAlgorithm(username, chatName, encryptionAlgorithms);
 
         ObservableList<Message> messages = FXCollections.observableArrayList();
 
@@ -483,9 +475,18 @@ public class ChatService {
       Map<String, Object> data = mapper.readValue(getConfigFilePath(username, chatName).toFile(), Map.class);
 
       byte[] key = Base64.getDecoder().decode(data.get("key").toString());
+      Algorithm encryptionAlgorithm = Algorithm.valueOf((String) data.get("algorithm"));
+      EncryptionMode encryptionMode = EncryptionMode.valueOf((String) data.get("encryptionMode"));
+      PackingMode packingMode = PackingMode.valueOf((String) data.get("packingMode"));
 
-      algorithm = new SymmetricAlgorithm(
-              new RC5(key, 16), encryptionMode, packingMode, initVector);
+      if (encryptionAlgorithm == Algorithm.RC5) {
+        algorithm = new SymmetricAlgorithm(
+                new RC5(key, 16), encryptionMode, packingMode, initVector);
+      } else {
+        algorithm = new SymmetricAlgorithm(
+                new LOKI97(key, initS1(), initS2()), encryptionMode, packingMode, initVector);
+      }
+
       encryptionAlgorithms.put(chatName, algorithm);
     } else {
       algorithm = encryptionAlgorithms.get(chatName);

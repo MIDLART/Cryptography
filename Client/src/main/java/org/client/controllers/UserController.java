@@ -16,6 +16,7 @@ import org.client.crypto.SymmetricAlgorithm;
 import org.client.crypto.enums.EncryptionMode;
 import org.client.crypto.enums.PackingMode;
 import org.client.dto.*;
+import org.client.models.ChatSettings;
 import org.client.models.Message;
 import org.client.services.ChatService;
 import org.client.services.FileService;
@@ -46,14 +47,12 @@ import static org.client.services.KeyService.getInvitationFilePath;
 @Controller
 public class UserController {
   private final Map<String, SymmetricAlgorithm> encryptionAlgorithms = new HashMap<>();
-  private final EncryptionMode encryptionMode = EncryptionMode.ECB;
-  private final PackingMode packingMode = PackingMode.ANSIX923;
   private final byte[] initVector =
           {(byte) 0x89, (byte) 0x01, (byte) 0x37, (byte) 0x23, (byte) 0xA0, (byte) 0xB1, (byte) 0x99, (byte) 0xE4,
            (byte) 0xDE, (byte) 0x73, (byte) 0x23, (byte) 0x5A, (byte) 0x5B, (byte) 0x52, (byte) 0x8F, (byte) 0x8B,};
 
   private final MessageService messageService = new MessageService();
-  private final ChatService chatService = new ChatService(encryptionMode, packingMode, initVector);
+  private final ChatService chatService = new ChatService(initVector);
   private final FileService fileService = new FileService();
   private final InvitationController invitationController = new InvitationController();
 
@@ -105,14 +104,16 @@ public class UserController {
 
       try (Stream<Path> paths = Files.list(userChatDir)) {
         paths.filter(Files::isRegularFile)
-                .filter(p -> p.getFileName().toString().endsWith("_deferred.txt"))
+                .filter(p -> p.getFileName().toString().endsWith("_deferred.json"))
                 .forEach(path -> {
                   String fileName = path.getFileName().toString();
-                  String sender = fileName.substring(0, fileName.length() - "_deferred.txt".length());
+                  String sender = fileName.substring(0, fileName.length() - "_deferred.json".length());
                   BigInteger B = invitationController.readInvitation(path, messageLabel);
 
-                  if (B != null) {
-                    addConfirmationButton(sender, B);
+                  ChatSettings chatSettings = invitationController.readChatSettings(path, sender);
+
+                  if (B != null && chatSettings != null) {
+                    addConfirmationButton(chatSettings, B);
                   }
                 });
       }
@@ -140,9 +141,9 @@ public class UserController {
 
   @FXML
   private void createChat() throws JsonProcessingException {
-    String recipient = invitationController.createChat(authToken, messageLabel);
-    if (recipient != null && !invitationController.checkChatExist(username, recipient, messageLabel)) {
-      invitationController.sendInvitation(username, recipient, authToken, messageLabel);
+    ChatSettings settings = invitationController.createChat(authToken, messageLabel);
+    if (settings != null && !invitationController.checkChatExist(username, settings.getRecipient(), messageLabel)) {
+      invitationController.sendInvitation(username, settings, authToken, messageLabel);
     }
   }
 
@@ -227,7 +228,7 @@ public class UserController {
         if (status.getStatus().equals("confirm")) {
           addChatButton(status.getNewChat());
         } else if (status.getStatus().equals("invitation")) {
-          addConfirmationButton(status.getSender(), status.getB());
+          addConfirmationButton(status.getSettings(), status.getB());
         }
       }
     }
@@ -287,13 +288,15 @@ public class UserController {
     curAttachedFile = fileService.attachFile(fileLabel);
   }
 
-  private void addConfirmationButton(String sender, BigInteger B) {
+  private void addConfirmationButton(ChatSettings settings, BigInteger B) {
+    String sender = settings.getRecipient();
+
     String buttonName = "Приглашение от " + sender;
     Button button = new Button(buttonName);
 
     button.setMaxWidth(Double.MAX_VALUE);
     button.setOnAction(e -> {
-      Path newChat = invitationController.invitationDialog(username, sender, B, authToken, messageLabel);
+      Path newChat = invitationController.invitationDialog(username, settings, B, authToken, messageLabel);
       if (newChat != null) {
         addChatButton(newChat);
       }

@@ -3,6 +3,7 @@ package org.server.controllers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.server.dto.*;
+import org.server.models.ChatSettings;
 import org.server.services.MessageConsumer;
 import org.server.services.MessageProducer;
 import org.server.services.UserService;
@@ -114,7 +115,8 @@ public class UserController {
 
   @PostMapping("/send-invitation")
   public ResponseEntity<String> sendInvitation(@RequestBody InvitationRequest request) {
-    String recipient = request.getRecipient();
+    ChatSettings settings = request.getChatSettings();
+    String recipient = settings.getRecipient();
 
     if (!userService.findUser(recipient)) {
       return ResponseEntity.badRequest().body("Пользователь не найден");
@@ -122,7 +124,7 @@ public class UserController {
 
     messageConsumer.createQueue(recipient);
 
-    messageProducer.sendInvitation(recipient, request.getInvitation());
+    messageProducer.sendInvitation(request);
     return ResponseEntity.ok("Сообщение отправлено в очередь");
   }
 

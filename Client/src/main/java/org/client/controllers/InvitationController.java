@@ -2,14 +2,20 @@ package org.client.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
+import org.client.crypto.enums.EncryptionMode;
+import org.client.crypto.enums.PackingMode;
 import org.client.diffie_hellman.DiffieHellmanProtocol;
 import org.client.dto.Invitation;
 import org.client.dto.InvitationRequest;
+import org.client.enums.Algorithm;
+import org.client.models.ChatSettings;
 import org.client.services.KeyService;
 import org.springframework.stereotype.Controller;
 
@@ -35,24 +41,45 @@ import static org.client.services.CommonService.showError;
 public class InvitationController {
   private final KeyService keyService = new KeyService();
 
-  public String createChat(String authToken, Label messageLabel) {
-    Dialog<String> dialog = new Dialog<>();
+  public ChatSettings createChat(String authToken, Label messageLabel) {
+    Dialog<ChatSettings> dialog = new Dialog<>();
     dialog.setTitle("Создать новый чат");
-    dialog.setHeaderText("Введите имя пользователя для нового чата");
+    dialog.setHeaderText("Настройки нового чата");
 
     ButtonType createButtonType = new ButtonType("Создать", ButtonBar.ButtonData.OK_DONE);
     ButtonType cancelButtonType = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
-
     dialog.getDialogPane().getButtonTypes().addAll(createButtonType, cancelButtonType);
 
     TextField recipientInput = new TextField();
     recipientInput.setPromptText("Имя пользователя");
 
-    GridPane grid = new GridPane();
-    grid.add(new Label("Получатель: "), 0, 0);
-    grid.add(recipientInput, 1, 0);
-    dialog.getDialogPane().setContent(grid);
+    ComboBox<Algorithm> algorithmCombo = new ComboBox<>(
+            FXCollections.observableArrayList(Algorithm.values()));
+    algorithmCombo.getSelectionModel().selectFirst();
 
+    ComboBox<EncryptionMode> encryptionCombo = new ComboBox<>(
+            FXCollections.observableArrayList(EncryptionMode.values()));
+    encryptionCombo.getSelectionModel().selectFirst();
+
+    ComboBox<PackingMode> packingCombo = new ComboBox<>(
+            FXCollections.observableArrayList(PackingMode.values()));
+    packingCombo.getSelectionModel().selectFirst();
+
+    GridPane grid = new GridPane();
+    grid.setHgap(10);
+    grid.setVgap(10);
+    grid.setPadding(new Insets(20, 150, 10, 10));
+
+    grid.add(new Label("Получатель:"), 0, 0);
+    grid.add(recipientInput, 1, 0);
+    grid.add(new Label("Алгоритм:"), 0, 1);
+    grid.add(algorithmCombo, 1, 1);
+    grid.add(new Label("Режим шифрования:"), 0, 2);
+    grid.add(encryptionCombo, 1, 2);
+    grid.add(new Label("Режим заполнения:"), 0, 3);
+    grid.add(packingCombo, 1, 3);
+
+    dialog.getDialogPane().setContent(grid);
     Platform.runLater(recipientInput::requestFocus);
 
     dialog.setResultConverter(dialogButton -> {
@@ -64,14 +91,18 @@ public class InvitationController {
           return null;
         }
 
-        return recipient;
+        return new ChatSettings(
+                recipient,
+                algorithmCombo.getValue(),
+                encryptionCombo.getValue(),
+                packingCombo.getValue()
+        );
       }
       return null;
     });
 
-    Optional<String> result = dialog.showAndWait();
-
-    return result.map(String::trim).orElse(null);
+    Optional<ChatSettings> result = dialog.showAndWait();
+    return result.orElse(null);
   }
 
   private boolean userExists(String name, String authToken) {
@@ -104,8 +135,10 @@ public class InvitationController {
   }
 
   @FXML
-  public void sendInvitation(String username, String recipient, String authToken, Label messageLabel) throws JsonProcessingException {
+  public void sendInvitation(String username, ChatSettings settings, String authToken, Label messageLabel) throws JsonProcessingException {
     clearLabel(messageLabel);
+
+    String recipient = settings.getRecipient();
 
     if (recipient == null || recipient.trim().isEmpty()) {
       showError(messageLabel, "Укажите получателя");
@@ -129,12 +162,14 @@ public class InvitationController {
       return;
     }
 
-    sendInvitationRequest(username, recipient, dh.getPublicA(), authToken, messageLabel);
+    sendInvitationRequest(username, settings, dh.getPublicA(), authToken, messageLabel);
   }
 
   @FXML
-  public Path sendConfirmation(String username, String recipient, String authToken, Label messageLabel, BigInteger B) throws JsonProcessingException {
+  public Path sendConfirmation(String username, ChatSettings settings, String authToken, Label messageLabel, BigInteger B) throws JsonProcessingException {
     clearLabel(messageLabel);
+
+    String recipient = settings.getRecipient();
 
     if (recipient == null || recipient.trim().isEmpty()) {
       showError(messageLabel, "Укажите получателя");
@@ -153,24 +188,24 @@ public class InvitationController {
       byte[] key = dh.getKey(B);
 
       try {
-        keyService.writeFinalKey(username, recipient, key);
+        keyService.writeConfig(username, recipient, key, settings);
         newChat = createChatFilePath(username, recipient);
       } catch (IOException e) {
         log.error("Write private key error", e);
         return null;
       }
 
-      sendInvitationRequest(username, recipient, dh.getPublicA(), authToken, messageLabel);
+      sendInvitationRequest(username, settings, dh.getPublicA(), authToken, messageLabel);
     } else {
-      sendInvitationRequest(username, recipient, null, authToken, messageLabel);
+      sendInvitationRequest(username, settings, null, authToken, messageLabel);
     }
 
     return newChat;
   }
 
-  private void sendInvitationRequest(String username, String recipient, BigInteger A, String authToken, Label messageLabel) throws JsonProcessingException {
+  private void sendInvitationRequest(String username, ChatSettings settings, BigInteger A, String authToken, Label messageLabel) throws JsonProcessingException {
     Invitation invitation = new Invitation(username, A);
-    InvitationRequest invitationRequest = new InvitationRequest(recipient, invitation);
+    InvitationRequest invitationRequest = new InvitationRequest(settings, invitation);
     String jsonRequest = keyService.getMapper().writeValueAsString(invitationRequest);
 
     HttpRequest request = HttpRequest.newBuilder()
@@ -187,21 +222,24 @@ public class InvitationController {
       if (response.statusCode() == 200) {
         showSuccess(messageLabel, "Отправлено");
       } else {
-        showError(messageLabel, "Ошибка сервера: " + response.body());
+        showError(messageLabel, "Ошибка сервера " + response.body());
       }
 
     } catch (IOException | InterruptedException e) {
       log.error("Invitation sending error", e);
-      showError(messageLabel, "Ошибка отправки: " + e.getMessage());
+      showError(messageLabel, "Ошибка отправки " + e.getMessage());
     }
   }
 
   public InvitationStatus processInvitation(String username, String jsonMessage) throws IOException {
-    Invitation invitation = keyService.getMapper()
-            .readValue(jsonMessage, Invitation.class);
+    InvitationRequest invitationRequest = keyService.getMapper().readValue(jsonMessage, InvitationRequest.class);
+    ChatSettings settings = invitationRequest.getChatSettings();
+    Invitation invitation = invitationRequest.getInvitation();
 
     String sender = invitation.getSender();
     BigInteger B = invitation.getA();
+
+    settings.setRecipient(sender);
 
     Path privateKeyFilePath = keyService.getPrivateKeyFilePath(username, sender);
 
@@ -212,10 +250,10 @@ public class InvitationController {
 
         byte[] key = dh.getKey(B);
 
-        keyService.writeFinalKey(username, sender, key);
+        keyService.writeConfig(username, sender, key, settings);
         Path newChat = createChatFilePath(username, sender);
 
-                log.info("Приглашение для {} принято", sender);
+        log.info("Приглашение для {} принято", sender);
         Files.delete(privateKeyFilePath);
 
         var res = new InvitationStatus("confirm");
@@ -227,17 +265,19 @@ public class InvitationController {
         return new InvitationStatus("reject");
       }
     } else { //Приглашение
-      keyService.writeInvitation(username, sender, B);
+      keyService.writeInvitation(username, sender, B, settings);
 
       var res = new InvitationStatus("invitation");
-      res.setSender(sender);
+      res.setSettings(settings);
       res.setB(B);
 
       return res;
     }
   }
 
-  public Path invitationDialog(String username, String sender, BigInteger B, String authToken, Label messageLabel) {
+  public Path invitationDialog(String username, ChatSettings settings, BigInteger B, String authToken, Label messageLabel) {
+    String sender = settings.getRecipient();
+
     log.info("Получено приглашение от {}", sender);
 
     Dialog<Boolean> dialog = new Dialog<>();
@@ -263,7 +303,7 @@ public class InvitationController {
 
     Path newChat = null;
     try {
-      newChat = sendConfirmation(username, sender, authToken, messageLabel, finalB);
+      newChat = sendConfirmation(username, settings, authToken, messageLabel, finalB);
     } catch (JsonProcessingException e) {
       log.error("Send confirmation error", e);
       showError(messageLabel, "Ошибка отправки подтверждения");
@@ -303,10 +343,19 @@ public class InvitationController {
 
   public BigInteger readInvitation(Path file, Label messageLabel) {
     try {
-      return keyService.readPrivateKey(file);
+      return keyService.readInvitationPrivateKey(file);
     } catch (IOException e) {
       log.error("Invitation reading error", e);
       showError(messageLabel, "Ошибка чтения приглашения");
+      return null;
+    }
+  }
+
+  public ChatSettings readChatSettings(Path file, String chatName) {
+    try {
+      return keyService.readChatSettings(file, chatName);
+    } catch (IOException e) {
+      log.error("Invitation reading settings error", e);
       return null;
     }
   }
@@ -315,7 +364,7 @@ public class InvitationController {
   public static class InvitationStatus {
     private final String status;
     private Path newChat = null;
-    private String sender = null;
+    private ChatSettings settings = null;
     private BigInteger B = null;
   }
 }
