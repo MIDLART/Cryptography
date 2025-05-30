@@ -67,6 +67,30 @@ public class KeyService {
     );
   }
 
+  public ChatSettings readChatSettings(String username, String chatName) throws IOException {
+    return readChatSettings(getConfigFilePath(username, chatName), chatName);
+  }
+
+  public ChatSettings settingsWithNewKey(String username, String chatName, byte[] newKey) {
+    Path file;
+    Map<String, Object> config;
+    try {
+      file = getConfigFilePath(username, chatName);
+      config = mapper.readValue(file.toFile(), Map.class);
+    } catch (IOException e) {
+      log.error("Error reading config file", e);
+      return null;
+    }
+
+    return new ChatSettings(
+            chatName,
+            Algorithm.valueOf((String) config.get("algorithm")),
+            EncryptionMode.valueOf((String) config.get("encryptionMode")),
+            PackingMode.valueOf((String) config.get("packingMode")),
+            newKey
+    );
+  }
+
   public BigInteger readPrivateKey(Path file) throws IOException {
     String keyString = Files.readString(file);
 
@@ -89,8 +113,6 @@ public class KeyService {
 
     String base64Key = Base64.getEncoder().encodeToString(Arrays.copyOfRange(key, 0, 32));
     String base64IV = Base64.getEncoder().encodeToString(settings.getIV());
-
-    log.info("writing conf iv {}", base64IV);
 
     configData.put("key", base64Key);
     configData.put("algorithm", settings.getAlgorithm().name());
@@ -121,5 +143,53 @@ public class KeyService {
     try (OutputStream out = Files.newOutputStream(file, StandardOpenOption.CREATE)) {
       mapper.writeValue(out, configData);
     }
+  }
+
+  public Path updateKeyInConfig(String username, String chatName, byte[] newKey) throws IOException {
+    Path configFile = getConfigFilePath(username, chatName);
+
+    if (!Files.exists(configFile)) {
+      return null;
+    }
+
+    Map<String, Object> configData = mapper.readValue(configFile.toFile(), Map.class);
+
+    String base64NewKey = null;
+    if (newKey != null) {
+      base64NewKey = Base64.getEncoder().encodeToString(Arrays.copyOfRange(newKey, 0, 32));
+    }
+
+    configData.put("key", base64NewKey);
+
+    try (OutputStream out = Files.newOutputStream(configFile,
+            StandardOpenOption.TRUNCATE_EXISTING,
+            StandardOpenOption.WRITE)) {
+      mapper.writeValue(out, configData);
+    }
+
+    return configFile;
+  }
+
+  public boolean isKeyNull(String username, String chatName) {
+    Path configFile;
+    try {
+      configFile = getConfigFilePath(username, chatName);
+    } catch (IOException e) {
+      log.error("Error reading config file", e);
+      return true;
+    }
+
+    if (!Files.exists(configFile)) {
+      log.error("config file does not exist");
+    }
+
+    Map<String, Object> configData = null;
+    try {
+      configData = mapper.readValue(configFile.toFile(), Map.class);
+    } catch (IOException e) {
+      log.error("Error mapping config file", e);
+      return true;
+    }
+    return configData.get("key") == null;
   }
 }

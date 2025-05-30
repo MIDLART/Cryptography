@@ -80,7 +80,7 @@ public class MessageService {
       return;
     }
 
-    int statusCode = send(jsonRequest, authToken, messageLabel, "message");
+    int statusCode = send(jsonRequest, authToken, messageLabel, "send-message");
 
     if (statusCode == 200) {
       try {
@@ -170,7 +170,7 @@ public class MessageService {
           return;
         }
 
-        int statusCode = send(jsonRequest, authToken, messageLabel, "file-message");
+        int statusCode = send(jsonRequest, authToken, messageLabel, "send-file-message");
 
         if (statusCode != 200) {
           showError(messageLabel, "Ошибка отправки файла (часть " + (chunkNumber) + ")");
@@ -193,9 +193,9 @@ public class MessageService {
     }
   }
 
-  private int send(String jsonRequest, String authToken, Label messageLabel, String type) {
+  public int send(String jsonRequest, String authToken, Label messageLabel, String type) {
     HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:8080/send-" + type))
+            .uri(URI.create("http://localhost:8080/" + type))
             .header("Authorization", "Bearer " + authToken)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(jsonRequest))

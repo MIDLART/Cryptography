@@ -13,9 +13,11 @@
 <?import javafx.scene.control.ListView?>
 <?import java.net.URL?>
 
+<?import javafx.scene.layout.Region?>
 <SplitPane dividerPositions="0.2" prefWidth="700" prefHeight="600"
            xmlns:fx="http://javafx.com/fxml"
-           fx:controller="org.client.controllers.UserController">
+           fx:controller="org.client.controllers.UserController"
+           stylesheets="@/org/client/css/chat.css">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
     </padding>
@@ -32,10 +34,19 @@
     </VBox>
 
     <!-- Правая панель -->
-    <VBox alignment="CENTER" spacing="20.0">
+    <VBox alignment="CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
         <Button fx:id="button" text="Hello!" onAction="#meow"/>
 
-        <ScrollPane fitToWidth="true" fitToHeight="true" prefHeight="300" prefWidth="400">
+        <!-- Панель управления чатом -->
+        <HBox fx:id="chatControls" alignment="CENTER" spacing="10" visible="false">
+            <Region HBox.hgrow="ALWAYS"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="chatTitleLabel" text="Пользователь вышел из чата" styleClass="chat-title" visible="false"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Удалить чат" onAction="#deleteChat" styleClass="danger-button"/>
+        </HBox>
+
+        <ScrollPane fitToWidth="true" prefViewportHeight="500" minHeight="400">
             <ListView fx:id="chatListView" styleClass="message-list">
                 <stylesheets>
                     <URL value="@/org/client/css/chat.css" />

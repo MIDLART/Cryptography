@@ -33,7 +33,7 @@ public class FileService {
     return file;
   }
 
-  public Path getFileDirectoryPath(String username, String recipient) throws IOException {
+  public static Path getFileDirectoryPath(String username, String recipient) throws IOException {
     Path userFileDir = Paths.get(CHAT_DIR, username, recipient + "_files");
 
     if (!Files.exists(userFileDir)) {

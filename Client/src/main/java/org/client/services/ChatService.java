@@ -27,6 +27,7 @@ import org.client.dto.ChatMessage;
 import org.client.enums.Algorithm;
 import org.client.enums.MessageType;
 import org.client.models.Message;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -42,11 +43,12 @@ import java.util.concurrent.ExecutionException;
 import static java.lang.Thread.sleep;
 import static org.client.crypto.loki97.boxes.Sboxes.initS1;
 import static org.client.crypto.loki97.boxes.Sboxes.initS2;
+import static org.client.services.FileService.getFileDirectoryPath;
 import static org.client.services.KeyService.getConfigFilePath;
 
 @Getter
 @Slf4j
-//@Service
+@Service
 public class ChatService {
   public static final String CHAT_DIR = "Client/src/main/resources/org/client/chats/";
   private final ObjectMapper mapper = new ObjectMapper();
@@ -468,6 +470,8 @@ public class ChatService {
     if(!encryptionAlgorithms.containsKey(chatName)) {
       Map<String, Object> data = mapper.readValue(getConfigFilePath(username, chatName).toFile(), Map.class);
 
+      if (data.get("key") == null) return null;
+
       byte[] key = Base64.getDecoder().decode(data.get("key").toString());
       Algorithm encryptionAlgorithm = Algorithm.valueOf((String) data.get("algorithm"));
       EncryptionMode encryptionMode = EncryptionMode.valueOf((String) data.get("encryptionMode"));
@@ -488,6 +492,38 @@ public class ChatService {
     }
 
     return algorithm;
+  }
+
+  public void deleteChat(String username, String recipient) {
+    try {
+      Path chatFile = getChatFilePath(username, recipient);
+      Path configFile = getConfigFilePath(username, recipient);
+      Path filesDir = getFileDirectoryPath(username, recipient);
+
+      if (Files.exists(chatFile)) {
+        Files.delete(chatFile);
+      }
+
+      if (Files.exists(configFile)) {
+        Files.delete(configFile);
+      }
+
+      if (Files.exists(filesDir)) {
+        Files.walk(filesDir)
+                .sorted(Comparator.reverseOrder())
+                .forEach(path -> {
+                  try {
+                    Files.delete(path);
+                    log.debug("Deleted file: {}", path);
+                  } catch (IOException e) {
+                    log.error("Failed to delete file: {}", path, e);
+                  }
+                });
+      }
+
+    } catch (IOException e) {
+      log.error("Delete chat error for {}: {}", recipient, e.getMessage());
+    }
   }
 
   private String addPrefix(MessageType type, String message) {

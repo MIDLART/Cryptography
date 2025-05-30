@@ -72,4 +72,21 @@ public class MessageProducer {
 
     log.info("Отправлено приглашение | От: {} | Для: {}", invitation.getSender(), recipient);
   }
+
+  public void sendDeleteChat(DeleteRequest request) {
+    String recipient = request.getRecipient();
+
+    String queueName = RabbitMQConfig.QUEUE_PREFIX + recipient;
+
+    try {
+      String jsonMessage = objectMapper.writeValueAsString(request);
+      String queueMessage = objectMapper.writeValueAsString(new QueueMessage("Delete", jsonMessage));
+
+      rabbitTemplate.convertAndSend(queueName, queueMessage);
+    } catch (JsonProcessingException e) {
+      log.error("Parsing error {}", e.getMessage());
+    }
+
+    log.info("Отправлено сообщение о удаление | От: {} | Для: {}", request.getSender(), recipient);
+  }
 }

@@ -128,6 +128,20 @@ public class UserController {
     return ResponseEntity.ok("Сообщение отправлено в очередь");
   }
 
+  @PostMapping("/delete-chat")
+  public ResponseEntity<String> deleteChat(@RequestBody DeleteRequest request) {
+    String recipient = request.getRecipient();
+
+    if (!userService.findUser(recipient)) {
+      return ResponseEntity.badRequest().body("Пользователь не найден");
+    }
+
+    messageConsumer.createQueue(recipient);
+
+    messageProducer.sendDeleteChat(request);
+    return ResponseEntity.ok("Сообщение отправлено в очередь");
+  }
+
   @GetMapping("/meow")
   public ResponseEntity<String> meow() {
     return ResponseEntity.ok("meow");

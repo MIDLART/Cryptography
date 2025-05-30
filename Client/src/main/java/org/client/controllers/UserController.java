@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
@@ -13,13 +14,12 @@ import javafx.stage.Stage;
 import lombok.*;
 import lombok.extern.log4j.Log4j2;
 import org.client.crypto.SymmetricAlgorithm;
-import org.client.crypto.enums.EncryptionMode;
-import org.client.crypto.enums.PackingMode;
 import org.client.dto.*;
 import org.client.models.ChatSettings;
 import org.client.models.Message;
 import org.client.services.ChatService;
 import org.client.services.FileService;
+import org.client.services.KeyService;
 import org.client.services.MessageService;
 import org.springframework.stereotype.Controller;
 
@@ -36,10 +36,12 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.stream.Stream;
 
 import static org.client.services.ChatService.CHAT_DIR;
+import static org.client.services.ChatService.getChatFilePath;
 import static org.client.services.CommonService.*;
 import static org.client.services.KeyService.getInvitationFilePath;
 
@@ -51,6 +53,7 @@ public class UserController {
   private final MessageService messageService = new MessageService();
   private final ChatService chatService = new ChatService();
   private final FileService fileService = new FileService();
+  private final KeyService keyService = new KeyService();
   private final InvitationController invitationController = new InvitationController();
 
   private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -72,6 +75,8 @@ public class UserController {
   @FXML private ListView<Message> chatListView;
   @FXML private VBox chatsList;
   @FXML private HBox messageControls;
+  @FXML private HBox chatControls;
+  @FXML private Label chatTitleLabel;
 
 
   public void initialize() {
@@ -160,7 +165,15 @@ public class UserController {
     try {
       chatFile = chatService.openChat(username, recipientName, chatListView, encryptionAlgorithms);
 
-      messageControls.setVisible(true);
+      if (!keyService.isKeyNull(username, recipientName)) {
+        messageControls.setVisible(true);
+        chatTitleLabel.setVisible(false);
+      } else {
+        messageControls.setVisible(false);
+        chatTitleLabel.setVisible(true);
+      }
+
+      chatControls.setVisible(true);
 
       Platform.runLater(() -> {
         if (!chatListView.getItems().isEmpty()) {
@@ -224,6 +237,24 @@ public class UserController {
           addChatButton(status.getNewChat());
         } else if (status.getStatus().equals("invitation")) {
           addConfirmationButton(status.getSettings(), status.getB());
+        }
+      } else if (type.equals("Delete")) {
+        DeleteRequest request = chatService.getMapper().readValue(text, DeleteRequest.class);
+
+        if (request.getForBoth()) {
+          deleteAndClearChat();
+        } else {
+          try {
+            keyService.updateKeyInConfig(request.getRecipient(), request.getSender(), null);
+          } catch (IOException e) {
+            log.error("Error updating key", e);
+          }
+
+          showSuccess(messageLabel, "Удалён чат c " + request.getSender());
+        }
+
+        if (chatFile == getChatFilePath(username, request.getSender())) {
+          loadChat();
         }
       }
     }
@@ -308,6 +339,101 @@ public class UserController {
     Platform.runLater(() -> chatsList.getChildren().add(button));
   }
 
+//  @FXML
+//  private void connectOrDisconnect() {
+//    if (!keyService.isKeyNull(username, recipientName)) {
+//      try {
+//        keyService.updateKeyInConfig(username, recipientName, null);
+//      } catch (IOException e) {
+//        log.error("Error updating key", e);
+//      }
+//    } else {
+//      ChatSettings settings;
+//      try {
+//        settings = keyService.readChatSettings(username, recipientName);
+//        invitationController.sendInvitation(username, settings, authToken, messageLabel);
+//      } catch (IOException e) {
+//        log.error("Error reading chat settings or sending invitation", e);
+//      }
+//
+//      chatControls.setVisible(false);
+//    }
+//  }
+
+  @FXML
+  private void deleteChat() {
+    if (username == null || recipientName == null) {
+      showError(messageLabel, "Не выбран чат для удаления");
+      return;
+    }
+
+    Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
+    confirmation.setTitle("Подтверждение удаления");
+    confirmation.setHeaderText("Выберите тип удаления чата с " + recipientName);
+
+    ToggleGroup group = new ToggleGroup();
+    RadioButton forMeOnly = new RadioButton("Только у меня");
+    RadioButton forBoth = new RadioButton("У всех участников");
+    forMeOnly.setToggleGroup(group);
+    forBoth.setToggleGroup(group);
+    forMeOnly.setSelected(true);
+
+    VBox vbox = new VBox(10, forMeOnly, forBoth);
+    vbox.setPadding(new Insets(20));
+    confirmation.getDialogPane().setContent(vbox);
+
+    confirmation.getButtonTypes().clear();
+    ButtonType deleteButton = new ButtonType("Удалить", ButtonBar.ButtonData.OK_DONE);
+    ButtonType cancelButton = new ButtonType("Отмена", ButtonBar.ButtonData.CANCEL_CLOSE);
+    confirmation.getButtonTypes().addAll(deleteButton, cancelButton);
+
+    Optional<ButtonType> result = confirmation.showAndWait();
+    if (result.isPresent() && result.get() == deleteButton) {
+      try {
+        boolean deleteForAll = forBoth.isSelected();
+
+        DeleteRequest messageRequest = new DeleteRequest(username, recipientName, deleteForAll);
+        String jsonRequest = chatService.getMapper().writeValueAsString(messageRequest);
+
+        messageService.send(jsonRequest, authToken, messageLabel, "delete-chat");
+
+        deleteAndClearChat();
+
+        showSuccess(messageLabel, deleteForAll
+                ? "Запрос на удаление чата у обоих участников отправлен"
+                : "Чат успешно удален (только у вас)");
+
+      } catch (Exception e) {
+        showError(messageLabel, "Ошибка при удалении чата: " + e.getMessage());
+        log.error("Delete chat error", e);
+      }
+    }
+  }
+
+  private void deleteAndClearChat() {
+    chatService.deleteChat(username, recipientName);
+    encryptionAlgorithms.remove(recipientName);
+
+    chatListView.getItems().clear();
+    messageControls.setVisible(false);
+    chatControls.setVisible(false);
+    removeChatButton(recipientName);
+    recipientName = null;
+    chatFile = null;
+  }
+
+  private void removeChatButton(String chatName) {
+    Platform.runLater(() -> {
+      chatsList.getChildren().removeIf(node -> {
+        if (node instanceof Button) {
+          Button button = (Button) node;
+          return button.getText().equals(chatName);
+        }
+        return false;
+      });
+    });
+  }
+
   @FXML
   private void goToAuth() {
     try {
@@ -331,7 +457,7 @@ public class UserController {
 
     try {
       scheduler.shutdown();
-      if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
+      if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
         scheduler.shutdownNow();
       }
     } catch (InterruptedException e) {
