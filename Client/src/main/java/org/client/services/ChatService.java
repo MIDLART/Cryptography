@@ -2,8 +2,10 @@ package org.client.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
+import javafx.beans.InvalidationListener;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
@@ -129,7 +131,7 @@ public class ChatService {
 
         Platform.runLater(() -> {
           chatListView.setItems(messages);
-          chatListView.setCellFactory(lv -> new MessageCell());
+          chatListView.setCellFactory(lv -> new MessageCell(chatListView));
         });
       }
     } catch (IOException e) {
@@ -141,6 +143,11 @@ public class ChatService {
   }
 
   public class MessageCell extends ListCell<Message> {
+    private final ListView<Message> chatListView;
+
+    public MessageCell(ListView<Message> chatListView) {
+      this.chatListView = chatListView;
+    }
     @Override
     protected void updateItem(Message msg, boolean empty) {
       super.updateItem(msg, empty);
@@ -160,15 +167,10 @@ public class ChatService {
           VBox container = new VBox(5);
           container.setAlignment(msg.isMe() ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
 
-          Image image = new Image(msg.getFilePath().toUri().toString());
-          ImageView imageView = new ImageView(image);
-          imageView.setFitWidth(200);
-          imageView.setPreserveRatio(true);
-
-          container.getChildren().add(imageView);
+          viewImage(container, msg);
 
           if (msg.progressProperty() != null) {
-            progressCheck(container, msg);
+            progressCheck(container, msg, chatListView);
           }
 
           setGraphic(container);
@@ -214,7 +216,7 @@ public class ChatService {
         mainContainer.getChildren().add(fileContainer);
 
         if (msg.progressProperty() != null) {
-          progressCheck(mainContainer, msg);
+          progressCheck(mainContainer, msg, chatListView);
         }
 
         setGraphic(mainContainer);
@@ -226,7 +228,18 @@ public class ChatService {
     }
   }
 
-  private void progressCheck(VBox container, Message msg) {
+  private void viewImage(VBox container, Message msg) {
+    Image image = new Image(msg.getFilePath().toUri().toString());
+    ImageView imageView = new ImageView(image);
+    imageView.setFitWidth(200);
+    imageView.setPreserveRatio(true);
+    container.getChildren().add(imageView);
+  }
+
+  private void progressCheck(VBox container, Message msg, ListView<Message> chatListView) {
+    HBox progressContainer = new HBox(5);
+    progressContainer.setAlignment(msg.isMe() ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+
     ProgressBar progressBar = new ProgressBar();
     progressBar.setPrefWidth(200);
     progressBar.setPrefHeight(5);
@@ -234,20 +247,58 @@ public class ChatService {
             msg.progressProperty().divide(100.0)
     );
 
+    Button cancelButton = new Button("✕");
+    cancelButton.getStyleClass().add("cancel-button");
+    cancelButton.setOnAction(e -> cancelButtonAction(msg, chatListView));
+
+    msg.progressProperty().addListener((obs, oldValue, newValue) -> {
+      if (newValue.doubleValue() >= 100.0 && !msg.isReached100()) {
+        msg.setReached100(true);
+      }
+    });
+
+    cancelButton.visibleProperty().bind(
+            msg.progressProperty().lessThan(100)
+                    .and(msg.reached100Property().not())
+    );
+
     progressBar.visibleProperty().bind(
             msg.progressProperty().lessThan(100)
     );
 
-    container.getChildren().add(progressBar);
+    progressContainer.getChildren().addAll(progressBar, cancelButton);
+    container.getChildren().add(progressContainer);
+  }
+
+  private void cancelButtonAction(Message msg, ListView<Message> chatListView) {
+    msg.cancel();
+
+    fileService.removeLine(msg.getFilePath(), addPrefix(msg.getType(), msg.getFilePath().toString()));
+
+    Path dir = msg.getFilePath().getParent();
+    try {
+      log.info("!! {} ", dir.toAbsolutePath().toString());
+      log.info("! {}", msg.getFilePath().toString());
+      Files.delete(Paths.get(dir.toAbsolutePath().toString(), msg.getFileId().toString()));
+      Files.delete(msg.getFilePath());
+    } catch (IOException e) {
+      log.error("delete file failed", e);
+    }
+
+    Platform.runLater(() -> {
+      ObservableList<Message> items = chatListView.getItems();
+      items.remove(msg);
+    });
   }
 
   public void writeMessage(Path chatFile, MessageType type, String message, Path filePath,
-                           ListView<Message> chatListView, Path curOpenChat, IntegerProperty progress) throws IOException {
+                           ListView<Message> chatListView, Path curOpenChat, IntegerProperty progress,
+                           CancellableCompletableFuture<Void> encryptFuture, UUID id) throws IOException {
 
     if (chatFile != null && Files.exists(chatFile)) {
       message += "\n";
 
-      Message newMessage = new Message(message, type, filePath, progress);
+      Message newMessage = new Message(message, type, filePath, progress, encryptFuture, id);
 
       if (chatFile.equals(curOpenChat)) {
         Platform.runLater(() -> {
@@ -268,7 +319,8 @@ public class ChatService {
   }
 
   public void meWriteMessage(Path chatFile, String message, ListView<Message> chatListView, Path curOpenChat) throws IOException {
-    writeMessage(chatFile, MessageType.MY_MESSAGE, message, null, chatListView, curOpenChat, null);
+    writeMessage(chatFile, MessageType.MY_MESSAGE, message, null, chatListView,
+            curOpenChat, null, null, null);
   }
 
   public void interlocutorWriteMessage(String username, String chatName, byte[] message,
@@ -292,7 +344,7 @@ public class ChatService {
     writeMessage(
             chatFile, MessageType.INTERLOCUTOR_MESSAGE,
             (new String(decryptedMessage, StandardCharsets.UTF_8)),
-            null, chatListView, curOpenChat, null);
+            null, chatListView, curOpenChat, null, null, null);
   }
 
   public CompletableFuture<Void> interlocutorWriteMessageAsync(String username, String chatName, byte[] message,
@@ -318,13 +370,13 @@ public class ChatService {
   }
 
   public void meWriteFile(Path chatFile, ListView<Message> chatListView, Path curOpenChat,
-                          Path filePath, IntegerProperty progress) throws IOException {
-    writeMessage(chatFile, MessageType.MY_FILE, filePath.toString(), filePath, chatListView, curOpenChat, progress);
+                          Path filePath, IntegerProperty progress, CancellableCompletableFuture<Void> encryptFuture, UUID id) throws IOException {
+    writeMessage(chatFile, MessageType.MY_FILE, filePath.toString(), filePath, chatListView, curOpenChat, progress, encryptFuture, id);
   }
 
   public void meWriteImage(Path chatFile, ListView<Message> chatListView, Path curOpenChat,
-                           Path filePath, IntegerProperty progress) throws IOException {
-    writeMessage(chatFile, MessageType.MY_IMAGE, filePath.toString(), filePath, chatListView, curOpenChat, progress);
+                           Path filePath, IntegerProperty progress, CancellableCompletableFuture<Void> encryptFuture, UUID id) throws IOException {
+    writeMessage(chatFile, MessageType.MY_IMAGE, filePath.toString(), filePath, chatListView, curOpenChat, progress, encryptFuture, id);
   }
 
   public void interlocutorWriteFileMessage(String username, String chatName, UUID fileId,
@@ -378,25 +430,14 @@ public class ChatService {
 
       if(fileService.isImage(finalFile.toString())) {
         writeMessage(chatFile, MessageType.INTERLOCUTOR_IMAGE, finalFile.toString(),
-                finalFile, chatListView, curOpenChat, null);
+                finalFile, chatListView, curOpenChat, null, null, null);
       } else {
         writeMessage(chatFile, MessageType.INTERLOCUTOR_FILE, finalFile.toString(),
-                finalFile, chatListView, curOpenChat, null);
+                finalFile, chatListView, curOpenChat, null, null, null);
       }
 
       filesProgress.remove(fileId);
     }
-  }
-
-  private void updateMessageFilePath(ListView<Message> chatListView, UUID fileId, Path finalFile) {
-    for (Message msg : chatListView.getItems()) {
-      if (msg.getFilePath() != null &&
-              msg.getFilePath().getFileName().toString().equals(fileId.toString())) {
-        msg.setFilePath(finalFile);
-        break;
-      }
-    }
-    chatListView.refresh();
   }
 
   public CompletableFuture<Void> interlocutorWriteFileMessageAsync(String username, String chatName, UUID fileId,

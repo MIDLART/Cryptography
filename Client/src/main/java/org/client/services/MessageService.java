@@ -101,20 +101,6 @@ public class MessageService {
     String fileName = file.getName();
     IntegerProperty progress = new SimpleIntegerProperty(0);
 
-    Path filePath = fileService.saveFile(username, recipient, file);
-    if (filePath != null) {
-      try {
-        if (fileService.isImage(fileName)) {
-          chatService.meWriteImage(chatFile, chatListView, chatFile, filePath, progress);
-        } else {
-          chatService.meWriteFile(chatFile, chatListView, chatFile, filePath, progress);
-        }
-      } catch (IOException e) {
-        log.error("File writing error", e);
-        showError(messageLabel, "Ошибка записи файла");
-      }
-    }
-
     byte[] encryptedName;
     try {
       encryptedName = takeEncryptedMessage(recipient, fileName.getBytes(), symmetricEncryption);
@@ -137,6 +123,20 @@ public class MessageService {
 
     CancellableCompletableFuture<Void> encryptFuture =
             symmetricEncryption.get(recipient).encryptAsync(file.toString(), encryptedFileName);
+
+    Path filePath = fileService.saveFile(username, recipient, file);
+    if (filePath != null) {
+      try {
+        if (fileService.isImage(fileName)) {
+          chatService.meWriteImage(chatFile, chatListView, chatFile, filePath, progress, encryptFuture, id);
+        } else {
+          chatService.meWriteFile(chatFile, chatListView, chatFile, filePath, progress, encryptFuture, id);
+        }
+      } catch (IOException e) {
+        log.error("File writing error", e);
+        showError(messageLabel, "Ошибка записи файла");
+      }
+    }
 
     try {
       while (!encryptFuture.isDone()) {

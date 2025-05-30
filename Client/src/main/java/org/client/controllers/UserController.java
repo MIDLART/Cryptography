@@ -35,10 +35,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.stream.Stream;
 
 import static org.client.services.ChatService.CHAT_DIR;
@@ -272,13 +269,13 @@ public class UserController {
     }
 
     if (message != null && !message.trim().isEmpty()) {
-      messageService.sendAsync(username, recipient, message, encryptionAlgorithms,
-              authToken, chatFile, chatListView, messageLabel, chatService);
+      messageService.sendAsync(username, recipient, message,
+              encryptionAlgorithms, authToken, chatFile, chatListView, messageLabel, chatService);
     }
 
     if (curAttachedFile != null) {
-      messageService.sendFileAsync(username, recipient, curAttachedFile, encryptionAlgorithms,
-              authToken, chatFile, chatListView, messageLabel, chatService);
+      messageService.sendFileAsync(username, recipient, curAttachedFile,
+              encryptionAlgorithms, authToken, chatFile, chatListView, messageLabel, chatService);
     }
 
     curAttachedFile = null;

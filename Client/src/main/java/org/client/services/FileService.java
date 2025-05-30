@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
@@ -139,6 +140,25 @@ public class FileService {
     }
 
     return filePath;
+  }
+
+  public void removeLine(Path filePath, String targetLine) {
+    try (RandomAccessFile file = new RandomAccessFile(filePath.toFile(), "rw")) {
+      String currentLine;
+      long startPos = 0;
+
+      while ((currentLine = file.readLine()) != null) {
+        if (currentLine.equals(targetLine)) {
+          file.seek(startPos);
+          file.writeBytes("");
+          break;
+        }
+
+        startPos = file.getFilePointer();
+      }
+    } catch (IOException e) {
+      log.error("Failed to remove line", e);
+    }
   }
 
   public Path renameFile(Path filePath, String newName) throws IOException {

@@ -32,3 +32,10 @@
     -fx-background-radius: 0;
     -fx-padding: 0;
 }
+
+.cancel-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #ff4444;
+    -fx-padding: 0 5 0 5;
+    -fx-border-width: 0;
+}
