@@ -14,6 +14,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.client.crypto.SymmetricAlgorithm;
@@ -29,12 +30,10 @@ import org.client.enums.MessageType;
 import org.client.models.Message;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -187,29 +186,11 @@ public class ChatService {
         fileContainer.setAlignment(msg.isMe() ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
 
         Label fileLabel = new Label(msg.getFilePath().getFileName().toString());
-        Button downloadBtn = new Button("Открыть");
+        Button downloadBtn = new Button("Скачать");
         downloadBtn.getStyleClass().add("download-button");
 
         downloadBtn.setOnAction(e -> {
-          try {
-            ProcessBuilder pb;
-            String os = System.getProperty("os.name").toLowerCase();
-            String filePath = msg.getFilePath().toFile().getAbsolutePath();
-
-            if (os.contains("win")) {
-              pb = new ProcessBuilder("cmd", "/c", "start", "\"DummyTitle\"", filePath);
-            } else if (os.contains("mac")) {
-              pb = new ProcessBuilder("open", filePath);
-            } else if (os.contains("nix") || os.contains("nux")) {
-              pb = new ProcessBuilder("xdg-open", filePath);
-            } else {
-              log.warn("Unsupported operating system. Cannot open file.");
-              return;
-            }
-            pb.start();
-          } catch (IOException ex) {
-            log.error("Download failed", ex);
-          }
+          downloadFileToUserSelectedLocation(msg.getFilePath());
         });
 
         fileContainer.getChildren().addAll(fileLabel, downloadBtn);
@@ -234,6 +215,45 @@ public class ChatService {
     imageView.setFitWidth(200);
     imageView.setPreserveRatio(true);
     container.getChildren().add(imageView);
+  }
+
+  private void downloadFileToUserSelectedLocation(Path sourceFilePath) {
+    FileChooser fileChooser = new FileChooser();
+    fileChooser.setTitle("Сохранить файл");
+    fileChooser.setInitialFileName(sourceFilePath.getFileName().toString());
+
+    fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("Все файлы", "*.*")
+    );
+
+    File destinationFile = fileChooser.showSaveDialog(null);
+
+    if (destinationFile != null) {
+      try {
+        Files.copy(sourceFilePath, destinationFile.toPath(),
+                StandardCopyOption.REPLACE_EXISTING);
+
+        Platform.runLater(() -> {
+          Alert alert = new Alert(Alert.AlertType.INFORMATION);
+          alert.setTitle("Скачивание завершено");
+          alert.setHeaderText(null);
+          alert.setContentText("Файл успешно сохранен в:\n" +
+                  destinationFile.getAbsolutePath());
+          alert.showAndWait();
+        });
+
+      } catch (IOException ex) {
+        log.error("File download failed", ex);
+        Platform.runLater(() -> {
+          Alert alert = new Alert(Alert.AlertType.ERROR);
+          alert.setTitle("Ошибка скачивания");
+          alert.setHeaderText(null);
+          alert.setContentText("Не удалось сохранить файл: " +
+                  ex.getMessage());
+          alert.showAndWait();
+        });
+      }
+    }
   }
 
   private void progressCheck(VBox container, Message msg, ListView<Message> chatListView) {
