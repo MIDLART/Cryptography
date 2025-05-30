@@ -16,4 +16,5 @@ public class ChatSettings {
   private Algorithm algorithm;
   private EncryptionMode encryptionMode;
   private PackingMode packingMode;
+  private byte[] IV;
 }

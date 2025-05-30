@@ -47,12 +47,9 @@ import static org.client.services.KeyService.getInvitationFilePath;
 @Controller
 public class UserController {
   private final Map<String, SymmetricAlgorithm> encryptionAlgorithms = new HashMap<>();
-  private final byte[] initVector =
-          {(byte) 0x89, (byte) 0x01, (byte) 0x37, (byte) 0x23, (byte) 0xA0, (byte) 0xB1, (byte) 0x99, (byte) 0xE4,
-           (byte) 0xDE, (byte) 0x73, (byte) 0x23, (byte) 0x5A, (byte) 0x5B, (byte) 0x52, (byte) 0x8F, (byte) 0x8B,};
 
   private final MessageService messageService = new MessageService();
-  private final ChatService chatService = new ChatService(initVector);
+  private final ChatService chatService = new ChatService();
   private final FileService fileService = new FileService();
   private final InvitationController invitationController = new InvitationController();
 
@@ -85,7 +82,6 @@ public class UserController {
   }
 
   public void chats() {
-//    chatService.loadChatsList(chatsList, username, messageLabel);
     chatsList.getChildren().clear();
 
     Path userChatDir = Path.of(CHAT_DIR, username);
@@ -93,7 +89,6 @@ public class UserController {
     try {
       if (!Files.exists(userChatDir)) {
         Files.createDirectories(userChatDir);
-        return;
       }
 
       try (Stream<Path> paths = Files.list(userChatDir)) {

@@ -27,10 +27,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import static org.client.crypto.operations.CryptoUtilites.genIV;
 import static org.client.services.ChatService.createChatFilePath;
 import static org.client.services.ChatService.getChatFilePath;
 import static org.client.services.CommonService.*;
@@ -61,8 +61,12 @@ public class InvitationController {
             FXCollections.observableArrayList(EncryptionMode.values()));
     encryptionCombo.getSelectionModel().selectFirst();
 
+    List<PackingMode> allowedPackingModes = Arrays.stream(PackingMode.values())
+            .filter(mode -> mode != PackingMode.NO)
+            .collect(Collectors.toList());
+
     ComboBox<PackingMode> packingCombo = new ComboBox<>(
-            FXCollections.observableArrayList(PackingMode.values()));
+            FXCollections.observableArrayList(allowedPackingModes));
     packingCombo.getSelectionModel().selectFirst();
 
     GridPane grid = new GridPane();
@@ -78,6 +82,9 @@ public class InvitationController {
     grid.add(encryptionCombo, 1, 2);
     grid.add(new Label("Режим заполнения:"), 0, 3);
     grid.add(packingCombo, 1, 3);
+
+    int blockSize = 16;
+    byte[] iv = genIV(blockSize);
 
     dialog.getDialogPane().setContent(grid);
     Platform.runLater(recipientInput::requestFocus);
@@ -95,7 +102,8 @@ public class InvitationController {
                 recipient,
                 algorithmCombo.getValue(),
                 encryptionCombo.getValue(),
-                packingCombo.getValue()
+                packingCombo.getValue(),
+                iv
         );
       }
       return null;
@@ -238,6 +246,8 @@ public class InvitationController {
 
     String sender = invitation.getSender();
     BigInteger B = invitation.getA();
+
+    log.info("settings {}", settings);
 
     settings.setRecipient(sender);
 

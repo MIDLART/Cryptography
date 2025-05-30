@@ -56,11 +56,14 @@ public class KeyService {
   public ChatSettings readChatSettings(Path file, String chatName) throws IOException {
     Map<String, Object> config = mapper.readValue(file.toFile(), Map.class);
 
+    byte[] iv = Base64.getDecoder().decode((String) config.get("iv"));
+
     return new ChatSettings(
             chatName,
             Algorithm.valueOf((String) config.get("algorithm")),
             EncryptionMode.valueOf((String) config.get("encryptionMode")),
-            PackingMode.valueOf((String) config.get("packingMode"))
+            PackingMode.valueOf((String) config.get("packingMode")),
+            iv
     );
   }
 
@@ -83,11 +86,17 @@ public class KeyService {
     Path file = getConfigFilePath(username, chatName);
 
     Map<String, Object> configData = new LinkedHashMap<>();
+
     String base64Key = Base64.getEncoder().encodeToString(Arrays.copyOfRange(key, 0, 32));
+    String base64IV = Base64.getEncoder().encodeToString(settings.getIV());
+
+    log.info("writing conf iv {}", base64IV);
+
     configData.put("key", base64Key);
     configData.put("algorithm", settings.getAlgorithm().name());
     configData.put("encryptionMode", settings.getEncryptionMode().name());
     configData.put("packingMode", settings.getPackingMode().name());
+    configData.put("iv", base64IV);
 
     try (OutputStream out = Files.newOutputStream(file, StandardOpenOption.CREATE)) {
       mapper.writeValue(out, configData);
@@ -101,10 +110,13 @@ public class KeyService {
 
     Map<String, Object> configData = new LinkedHashMap<>();
 
+    String base64IV = Base64.getEncoder().encodeToString(settings.getIV());
+
     configData.put("key", key.toString());
     configData.put("algorithm", settings.getAlgorithm().name());
     configData.put("encryptionMode", settings.getEncryptionMode().name());
     configData.put("packingMode", settings.getPackingMode().name());
+    configData.put("iv", base64IV);
 
     try (OutputStream out = Files.newOutputStream(file, StandardOpenOption.CREATE)) {
       mapper.writeValue(out, configData);

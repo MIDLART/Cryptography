@@ -54,13 +54,7 @@ public class ChatService {
   private final FileService fileService = new FileService();
   private final Map<UUID, Integer> filesProgress = new HashMap<>();
 
-  private final byte[] initVector;
-
   private static final Object FILE_LOCK = new Object();
-
-  public ChatService(byte[] initVector) {
-    this.initVector = initVector;
-  }
 
   public static Path getChatDirectoryPath(String username) throws IOException {
     Path userChatDir = Paths.get(CHAT_DIR, username);
@@ -478,6 +472,7 @@ public class ChatService {
       Algorithm encryptionAlgorithm = Algorithm.valueOf((String) data.get("algorithm"));
       EncryptionMode encryptionMode = EncryptionMode.valueOf((String) data.get("encryptionMode"));
       PackingMode packingMode = PackingMode.valueOf((String) data.get("packingMode"));
+      byte[] initVector = Base64.getDecoder().decode(data.get("iv").toString());
 
       if (encryptionAlgorithm == Algorithm.RC5) {
         algorithm = new SymmetricAlgorithm(
