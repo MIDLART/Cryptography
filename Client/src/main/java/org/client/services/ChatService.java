@@ -2,10 +2,8 @@ package org.client.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
-import javafx.beans.InvalidationListener;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
@@ -40,6 +38,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static java.lang.Thread.sleep;
+import static org.client.services.KeyService.getConfigFilePath;
 
 @Getter
 @Slf4j
@@ -80,6 +79,16 @@ public class ChatService {
     return userChatDir.resolve(chatName + "_chat.txt");
   }
 
+  public static Path createChatFilePath(String username, String chatName) throws IOException {
+    Path chatFile = getChatFilePath(username, chatName);
+
+    if (!Files.exists(chatFile)) {
+      Files.createFile(chatFile);
+    }
+
+    return chatFile;
+  }
+
   public Path openChat(String username, String chatName, ListView<Message> chatListView,
                        Map<String, SymmetricAlgorithm> encryptionAlgorithms) throws IOException {
     Path chatFile = getChatFilePath(username, chatName);
@@ -94,7 +103,10 @@ public class ChatService {
         }
 
         if(!encryptionAlgorithms.containsKey(chatName)) {
-          byte[] key = lines.getFirst().getBytes(StandardCharsets.UTF_8);
+          Map<String, Object> data = mapper.readValue(getConfigFilePath(username, chatName).toFile(), Map.class);
+
+          byte[] key = Base64.getDecoder().decode(data.get("key").toString());
+
           var algorithm = new SymmetricAlgorithm(
                   new RC5(key, 16), encryptionMode, packingMode, initVector);
           encryptionAlgorithms.put(chatName, algorithm);
@@ -102,7 +114,7 @@ public class ChatService {
 
         ObservableList<Message> messages = FXCollections.observableArrayList();
 
-        for (int i = 1; i < lines.size(); i++) {
+        for (int i = 0; i < lines.size(); i++) {
           String line = lines.get(i);
           if (line.startsWith("@me@")) {
             messages.add(new Message(line.substring(4), MessageType.MY_MESSAGE));
@@ -277,8 +289,6 @@ public class ChatService {
 
     Path dir = msg.getFilePath().getParent();
     try {
-      log.info("!! {} ", dir.toAbsolutePath().toString());
-      log.info("! {}", msg.getFilePath().toString());
       Files.delete(Paths.get(dir.toAbsolutePath().toString(), msg.getFileId().toString()));
       Files.delete(msg.getFilePath());
     } catch (IOException e) {
@@ -313,6 +323,7 @@ public class ChatService {
         Files.writeString(
                 chatFile,
                 messageWithSender,
+                StandardOpenOption.CREATE,
                 StandardOpenOption.APPEND);
       }
     }
@@ -329,7 +340,7 @@ public class ChatService {
 
     Path chatFile = getChatFilePath(username, chatName);
 
-    SymmetricAlgorithm algorithm = getAlgorithm(chatName, chatFile, encryptionAlgorithms);
+    SymmetricAlgorithm algorithm = getAlgorithm(username, chatName, encryptionAlgorithms);
 
     CancellableCompletableFuture<byte[]> decryptFuture = algorithm.decryptAsync(message);
 
@@ -386,7 +397,7 @@ public class ChatService {
 
     Path chatFile = getChatFilePath(username, chatName);
 
-    SymmetricAlgorithm algorithm = getAlgorithm(chatName, chatFile, encryptionAlgorithms);
+    SymmetricAlgorithm algorithm = getAlgorithm(username, chatName, encryptionAlgorithms);
 
     CancellableCompletableFuture<byte[]> decryptFuture = algorithm.decryptAsync(fileName);
 
@@ -465,17 +476,13 @@ public class ChatService {
             chatListView, curOpenChat, encryptionAlgorithms);
   }
 
-  private SymmetricAlgorithm getAlgorithm(String chatName, Path chatFile,
+  private SymmetricAlgorithm getAlgorithm(String username, String chatName,
                                           Map<String, SymmetricAlgorithm> encryptionAlgorithms) throws IOException {
     SymmetricAlgorithm algorithm;
     if(!encryptionAlgorithms.containsKey(chatName)) {
-      byte[] key;
-      synchronized (FILE_LOCK) {
-        try (Scanner scanner = new Scanner(chatFile)) {
-          String firstLine = scanner.nextLine();
-          key = firstLine.getBytes(StandardCharsets.UTF_8);
-        }
-      }
+      Map<String, Object> data = mapper.readValue(getConfigFilePath(username, chatName).toFile(), Map.class);
+
+      byte[] key = Base64.getDecoder().decode(data.get("key").toString());
 
       algorithm = new SymmetricAlgorithm(
               new RC5(key, 16), encryptionMode, packingMode, initVector);

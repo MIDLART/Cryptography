@@ -220,8 +220,7 @@ public class UserController {
       } else if (type.equals("ChatFileMessage")) {
         chatService.interlocutorParseAndWriteFileMessage(username, text, chatListView, chatFile, encryptionAlgorithms);
       } else if (type.equals("Invitation")) {
-        InvitationController.InvitationStatus status = invitationController
-                .processInvitation(username, text, authToken, messageLabel);
+        InvitationController.InvitationStatus status = invitationController.processInvitation(username, text);
 
         log.info(status.getStatus());
 

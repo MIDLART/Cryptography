@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.client.services.ChatService.createChatFilePath;
 import static org.client.services.ChatService.getChatFilePath;
 import static org.client.services.CommonService.*;
 import static org.client.services.CommonService.showError;
@@ -152,7 +153,8 @@ public class InvitationController {
       byte[] key = dh.getKey(B);
 
       try {
-        newChat = keyService.writeFinalKey(username, recipient, key);
+        keyService.writeFinalKey(username, recipient, key);
+        newChat = createChatFilePath(username, recipient);
       } catch (IOException e) {
         log.error("Write private key error", e);
         return null;
@@ -194,7 +196,7 @@ public class InvitationController {
     }
   }
 
-  public InvitationStatus processInvitation(String username, String jsonMessage, String authToken, Label messageLabel) throws IOException {
+  public InvitationStatus processInvitation(String username, String jsonMessage) throws IOException {
     Invitation invitation = keyService.getMapper()
             .readValue(jsonMessage, Invitation.class);
 
@@ -210,9 +212,10 @@ public class InvitationController {
 
         byte[] key = dh.getKey(B);
 
-        Path newChat = keyService.writeFinalKey(username, sender, key);
+        keyService.writeFinalKey(username, sender, key);
+        Path newChat = createChatFilePath(username, sender);
 
-        log.info("Приглашение для {} принято", sender);
+                log.info("Приглашение для {} принято", sender);
         Files.delete(privateKeyFilePath);
 
         var res = new InvitationStatus("confirm");
