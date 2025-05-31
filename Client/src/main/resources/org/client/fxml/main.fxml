@@ -3,7 +3,6 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.VBox?>
-
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.control.Hyperlink?>
@@ -12,8 +11,8 @@
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.ListView?>
 <?import java.net.URL?>
-
 <?import javafx.scene.layout.Region?>
+
 <SplitPane dividerPositions="0.2" prefWidth="700" prefHeight="600"
            xmlns:fx="http://javafx.com/fxml"
            fx:controller="org.client.controllers.UserController"
@@ -23,13 +22,18 @@
     </padding>
 
     <!-- Левая панель -->
-    <VBox spacing="10">
+    <VBox spacing="10" style="-fx-background-color: transparent;">
         <HBox alignment="CENTER" spacing="5">
             <Button text="Создать новый чат" onAction="#createChat"/>
         </HBox>
         <Label text="Мои чаты" style="-fx-font-weight: bold;"/>
-        <ScrollPane fitToWidth="true">
-            <VBox fx:id="chatsList" spacing="5"/>
+
+        <padding>
+            <Insets right="10"/>
+        </padding>
+
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;">
+            <VBox fx:id="chatsList" spacing="5" style="-fx-background-color: transparent;"/>
         </ScrollPane>
     </VBox>
 
@@ -46,6 +50,10 @@
             <Button text="Удалить чат" onAction="#deleteChat" styleClass="danger-button"/>
         </HBox>
 
+        <padding>
+            <Insets left="10"/>
+        </padding>
+
         <ScrollPane fitToWidth="true" prefViewportHeight="500" minHeight="400">
             <ListView fx:id="chatListView" styleClass="message-list">
                 <stylesheets>
@@ -55,7 +63,7 @@
         </ScrollPane>
 
         <HBox fx:id="messageControls" alignment="CENTER" spacing="5" visible="false">
-            <TextField fx:id="messageField" promptText="Введите сообщение"/>
+            <TextField fx:id="messageField" promptText="Введите сообщение" prefWidth="300"/>
             <Button text="Отправить" onAction="#sendMessage"/>
             <Button text="📎" onAction="#attachFile"/>
             <Label fx:id="fileLabel"/>

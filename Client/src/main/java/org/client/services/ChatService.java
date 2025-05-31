@@ -267,6 +267,8 @@ public class ChatService {
             msg.progressProperty().divide(100.0)
     );
 
+    progressBar.setStyle("-fx-accent: #4CAF50;");
+
     Button cancelButton = new Button("✕");
     cancelButton.getStyleClass().add("cancel-button");
     cancelButton.setOnAction(e -> cancelButtonAction(msg, chatListView));
@@ -274,6 +276,7 @@ public class ChatService {
     msg.progressProperty().addListener((obs, oldValue, newValue) -> {
       if (newValue.doubleValue() >= 100.0 && !msg.isReached100()) {
         msg.setReached100(true);
+        progressBar.setStyle("-fx-accent: #42A5F5;");
       }
     });
 
