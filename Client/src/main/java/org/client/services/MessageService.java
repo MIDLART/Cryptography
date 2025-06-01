@@ -178,7 +178,9 @@ public class MessageService {
         }
 
         chunkNumber++;
-        progress.set((int) (((double) chunkNumber / totalChunks) * 100));
+        if (totalChunks != 0) {
+          progress.set((int) (((double) chunkNumber / totalChunks) * 100));
+        }
       }
     } catch (IOException e) {
       log.error("File reading error", e);

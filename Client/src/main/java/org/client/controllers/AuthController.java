@@ -1,6 +1,7 @@
 package org.client.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -74,7 +75,13 @@ public class AuthController {
       if (response.statusCode() == 200) {
         showSuccess(messageLabel, "Регистрация успешна!");
       } else {
-        showError(messageLabel, "Ошибка: " + response.body());
+        try {
+          JsonNode jsonNode = new ObjectMapper().readTree(response.body());
+          String errorMessage = jsonNode.get("message").asText();
+          showError(messageLabel, "Ошибка: " + errorMessage);
+        } catch (Exception e) {
+          showError(messageLabel, "Ошибка: " + response.body());
+        }
       }
     } catch (IOException | InterruptedException e) {
       log.error("Registration error", e);

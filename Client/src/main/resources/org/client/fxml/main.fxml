@@ -63,9 +63,9 @@
         </ScrollPane>
 
         <HBox fx:id="messageControls" alignment="CENTER" spacing="5" visible="false">
-            <TextField fx:id="messageField" promptText="Введите сообщение" prefWidth="300"/>
-            <Button text="Отправить" onAction="#sendMessage"/>
-            <Button text="📎" onAction="#attachFile"/>
+            <TextField fx:id="messageField" promptText="Введите сообщение" prefWidth="200"/>
+            <Button text="Отправить" onAction="#sendMessage" minWidth="90"/>
+            <Button text="📎" onAction="#attachFile" minWidth="30" />
             <Label fx:id="fileLabel"/>
         </HBox>
 
