@@ -58,4 +58,27 @@ public class UserService implements UserDetailsService {
 
     return user != null;
   }
+
+  public boolean isValid(String str) {
+    if (str == null || str.isEmpty() || str.length() > 25) {
+      return false;
+    }
+    return str.matches("^[a-zA-Z0-9_]+$");
+  }
+
+  public String messageValidation(String username, String recipient) {
+    if (username == null || username.trim().isEmpty()) {
+      return "Не указан отправитель";
+    }
+
+    if (recipient == null || recipient.trim().isEmpty()) {
+      return "Не указан получатель";
+    }
+
+    if (!findUser(recipient)) {
+      return "Пользователь не найден";
+    }
+
+    return null;
+  }
 }

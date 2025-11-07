@@ -24,12 +24,12 @@ public class AuthController {
 
   @PostMapping("/registration")
   public ResponseEntity<RegistrationResponse> registerUser(@RequestBody User user) {
-    if (!isValid(user.getUsername())) {
+    if (!userService.isValid(user.getUsername())) {
       return ResponseEntity.badRequest().body(
               new RegistrationResponse("Имя пользователя невалидно. Имя должно содержать до 25 символов (буквы, цифры, _)"));
     }
 
-    if (!isValid(user.getPassword())) {
+    if (!userService.isValid(user.getPassword())) {
       return ResponseEntity.badRequest().body(
               new RegistrationResponse("Пароль невалиден. Он должен содержать до 25 символов (буквы, цифры, _)"));
     }
@@ -64,12 +64,5 @@ public class AuthController {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
               .body(new LoginResponse("Пользователь не найден", null));
     }
-  }
-
-  private boolean isValid(String str) {
-    if (str == null || str.isEmpty() || str.length() > 25) {
-      return false;
-    }
-    return str.matches("^[a-zA-Z0-9_]+$");
   }
 }

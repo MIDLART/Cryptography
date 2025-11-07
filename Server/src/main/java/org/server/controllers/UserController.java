@@ -36,16 +36,10 @@ public class UserController {
       return ResponseEntity.badRequest().body("Сообщение не может быть пустым");
     }
 
-    if (username == null || username.trim().isEmpty()) {
-      return ResponseEntity.badRequest().body("Не указан отправитель");
-    }
+    String validationRes = userService.messageValidation(username, recipient);
 
-    if (recipient == null || recipient.trim().isEmpty()) {
-      return ResponseEntity.badRequest().body("Не указан получатель");
-    }
-
-    if (!userService.findUser(recipient)) {
-      return ResponseEntity.badRequest().body("Пользователь не найден");
+    if (validationRes != null) {
+      return ResponseEntity.badRequest().body(validationRes);
     }
 
     log.info("Сообщение от {} для {}: {}", username, recipient, Arrays.toString(message));
@@ -62,20 +56,14 @@ public class UserController {
     String recipient = request.getRecipient();
     byte[] fileName = request.getFileName();
 
-    if (username == null || username.trim().isEmpty()) {
-      return ResponseEntity.badRequest().body("Не указан отправитель");
-    }
-
-    if (recipient == null || recipient.trim().isEmpty()) {
-      return ResponseEntity.badRequest().body("Не указан получатель");
-    }
-
     if (fileName == null) {
       return ResponseEntity.badRequest().body("Название файла не может быть пустым");
     }
 
-    if (!userService.findUser(recipient)) {
-      return ResponseEntity.badRequest().body("Пользователь не найден");
+    String validationRes = userService.messageValidation(username, recipient);
+
+    if (validationRes != null) {
+      return ResponseEntity.badRequest().body(validationRes);
     }
 
     log.info("Файл от {} для {}: {} [{}/{}]", username, recipient, Arrays.toString(fileName),

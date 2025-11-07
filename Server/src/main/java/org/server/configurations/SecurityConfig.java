@@ -31,17 +31,6 @@ public class SecurityConfig {
     return new JwtTokenFilter(jwtService, userDetailsService);
   }
 
-//  @Bean
-//  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//    return http
-//            .csrf(AbstractHttpConfigurer::disable)
-//            .httpBasic(b -> b.realmName("meowRealm"))
-//            .authorizeHttpRequests(a->a
-//                    .anyRequest().authenticated())
-//            .addFilterBefore(jwtTokenFilter(), BasicAuthenticationFilter.class)
-//            .build();
-//  }
-
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     return http
