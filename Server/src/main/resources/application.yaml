@@ -1,15 +1,3 @@
-#  spring.application.name=web
-#    spring.datasource.url=jdbc:postgresql://localhost:4444/it_p
-#    spring.datasource.username=admin
-#    #spring.datasource.password=${DB_PASSWORD}
-#    spring.datasource.password=admin
-#    spring.jpa.hibernate.ddl-auto=update
-#    spring.jpa.show-sql=true
-#    #spring.jpa.properties.hibernate.connection.autocommit=false
-#
-#    spring.datasource.hikari.auto-commit=false
-#    spring.jpa.properties.hibernate.connection.provider_disables_autocommit=true
-
 spring:
   output:
     ansi:
@@ -17,7 +5,7 @@ spring:
   application:
     name: Server
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
+    url: jdbc:postgresql://localhost:5432/postgres_cryptography
     username: user
     password: password
   jpa:
